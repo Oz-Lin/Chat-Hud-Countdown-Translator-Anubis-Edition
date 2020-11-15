@@ -1,4 +1,4 @@
-#[ANY] Chat_Hud_Countdown_translator
+# [ANY] Chat_Hud_Countdown_translator
 
 * Compiled in version; SourceMod Version: 1.10.0.6492
 * Sorry for my English.
