@@ -9,8 +9,10 @@
 
 #pragma newdecls required
 #define MAXLENGTH_INPUT 		128
-#define PLUGIN_VERSION 			"1.0"
+#define PLUGIN_VERSION 		"1.1-A"
 
+int color_hudA = 0;
+int color_hudB = 0;
 int number, onumber, number2, onumber2, hudAB;
 Handle timerHandle, timerHandle2, HudSyncA, HudSyncB ,kv;
 char Path[PLATFORM_MAX_PATH];
@@ -24,10 +26,11 @@ public Plugin myinfo =
 	url = ""
 }
 
-ConVar g_cVHudPositionA, g_cVHudPositionB, g_cVHudColor, g_cVHudSymbols;
+ConVar g_cVHudPositionA, g_cVHudPositionB, g_cVHudColor1, g_cVHudColor2, g_cVHudSymbols, g_changecolor;
 
-float HudPosA[2], HudPosB[2];
-int HudColor[3];
+float HudPosA[2], HudPosB[2], Color_Time;
+int HudColor1[3];
+int HudColor2[3];
 bool HudSymbols;
 bool csgo;
 
@@ -46,15 +49,19 @@ public void OnPluginStart()
 	hudAB = 1;
 	g_cVHudPositionA = CreateConVar("sm_chathud_1_position", "-1.0 0.100", "The X and Y position for the hud 1.");
 	g_cVHudPositionB = CreateConVar("sm_chathud_2_position", "-1.0 0.125", "The X and Y position for the hud 2.");
-	g_cVHudColor = CreateConVar("sm_chathud_color", "255 0 0", "RGB color value for the hud.");
+	g_cVHudColor1 = CreateConVar("sm_chathud_color_1", "0 255 0", "RGB color value for the hud Start.");
+	g_cVHudColor2 = CreateConVar("sm_chathud_color_2", "255 0 0", "RGB color value for the hud Finish.");
 	g_cVHudSymbols = CreateConVar("sm_chathud_symbols", "0", "Determines whether >> and << are wrapped around the text.");
+	g_changecolor = CreateConVar("sm_chathud_time_changecolor", "3", "Set the final time for Hud to change colors.");
 
 	g_cVHudPositionA.AddChangeHook(ConVarChange);
 	g_cVHudPositionB.AddChangeHook(ConVarChange);
-	g_cVHudColor.AddChangeHook(ConVarChange);
+	g_cVHudColor1.AddChangeHook(ConVarChange);
+	g_cVHudColor2.AddChangeHook(ConVarChange);
 	g_cVHudSymbols.AddChangeHook(ConVarChange);
+	g_changecolor.AddChangeHook(ConVarChange);
 
-	AutoExecConfig(true);
+	AutoExecConfig(true, "chathud");
 	GetConVars();
 }
 
@@ -141,12 +148,16 @@ public void GetConVars()
 	HudPosB[0] = StringToFloat(StringPosB[0]);
 	HudPosB[1] = StringToFloat(StringPosB[1]);
 
-	char ColorValue[64];
-	g_cVHudColor.GetString(ColorValue, sizeof(ColorValue));
+	char ColorValue1[64];
+	char ColorValue2[64];
+	g_cVHudColor1.GetString(ColorValue1, sizeof(ColorValue1));
+	g_cVHudColor2.GetString(ColorValue2, sizeof(ColorValue2));
 
-	ColorStringToArray(ColorValue, HudColor);
+	ColorStringToArray(ColorValue1, HudColor1);
+	ColorStringToArray(ColorValue2, HudColor2);
 
 	HudSymbols = g_cVHudSymbols.BoolValue;
+	Color_Time = g_changecolor.FloatValue;
 }
 
 public void ConVarChange(ConVar convar, char[] oldValue, char[] newValue)
@@ -423,6 +434,7 @@ public Action RepeatMSGA(Handle timer, Handle pack)
 	if(number <= 0)
 	{
 		DeleteTimerA();
+		color_hudA = 0;
 		for (int i = 1; i <= MAXPLAYERS + 1; i++)
 		{
 			if(IsValidClient(i))
@@ -454,8 +466,16 @@ public Action RepeatMSGA(Handle timer, Handle pack)
 
 public void SendHudMsgA(int client, char[] szMessage)
 {
-	SetHudTextParams(HudPosA[0], HudPosA[1], 1.0, HudColor[0], HudColor[1], HudColor[2], 255, 0, 0.0, 0.0, 0.0);
+	if(color_hudA == 0 && number > Color_Time) {
+	SetHudTextParams(HudPosA[0], HudPosA[1], 1.0, HudColor1[0], HudColor1[1], HudColor1[2], 255, 2, 0.1, 0.02, 0.1);
+	} if(color_hudA >= 1 && number > Color_Time) {
+	SetHudTextParams(HudPosA[0], HudPosA[1], 1.0, HudColor1[0], HudColor1[1], HudColor1[2], 255, 0, 0.0, 0.0, 0.0);
+	} if(color_hudA > 0  && number <= Color_Time) {
+	SetHudTextParams(HudPosA[0], HudPosA[1], 1.0, HudColor2[0], HudColor2[1], HudColor2[2], 255, 0, 0.0, 0.0, 0.0);
+	}
+	color_hudA++;
 	ShowSyncHudText(client, HudSyncA, szMessage);
+	if(number <= 0) color_hudA = 0;
 }
 
 public void InitCountDownB(char[] text)
@@ -527,8 +547,16 @@ public Action RepeatMSGB(Handle timer, Handle pack)
 
 public void SendHudMsgB(int client, char[] szMessage)
 {
-	SetHudTextParams(HudPosB[0], HudPosB[1], 1.0, HudColor[0], HudColor[1], HudColor[2], 255, 0, 0.0, 0.0, 0.0);
+	if(color_hudB == 0 && number2 > Color_Time) {
+	SetHudTextParams(HudPosB[0], HudPosB[1], 1.0, HudColor1[0], HudColor1[1], HudColor1[2], 255, 2, 0.2, 0.01, 0.1);
+	} if(color_hudB >= 1 && number2 > Color_Time) {
+	SetHudTextParams(HudPosB[0], HudPosB[1], 1.0, HudColor1[0], HudColor1[1], HudColor1[2], 255, 0, 0.0, 0.0, 0.0);
+	} if(color_hudB > 0  && number2 <= Color_Time) {
+	SetHudTextParams(HudPosB[0], HudPosB[1], 1.0, HudColor2[0], HudColor2[1], HudColor2[2], 255, 0, 0.0, 0.0, 0.0);
+	}
+	color_hudB++;
 	ShowSyncHudText(client, HudSyncB, szMessage);
+	if(number2 <= 0) color_hudB = 0;
 }
 
 bool IsValidClient(int client, bool nobots = true)
