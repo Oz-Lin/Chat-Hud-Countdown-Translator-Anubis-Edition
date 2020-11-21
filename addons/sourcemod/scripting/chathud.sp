@@ -516,6 +516,7 @@ public Action RepeatMSGB(Handle timer, Handle pack)
 	if(number2 <= 0)
 	{
 		DeleteTimerB();
+		color_hudB = 0;
 		for (int i = 1; i <= MAXPLAYERS + 1; i++)
 		{
 			if(IsValidClient(i))
