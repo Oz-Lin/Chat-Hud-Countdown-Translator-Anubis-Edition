@@ -405,7 +405,7 @@ public void InitCountDownA(char[] text)
 	}
 
 	DataPack TimerPack;
-	timerHandle = CreateDataTimer(1.0, RepeatMSGA, TimerPack, TIMER_REPEAT);
+	timerHandle = CreateDataTimer(1.0, RepeatMSGA, TimerPack, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	char text2[MAXLENGTH_INPUT + 10];
 	if(HudSymbols)
 	{
@@ -487,7 +487,7 @@ public void InitCountDownB(char[] text)
 	}
 
 	DataPack TimerPack;
-	timerHandle2 = CreateDataTimer(1.0, RepeatMSGB, TimerPack, TIMER_REPEAT);
+	timerHandle2 = CreateDataTimer(1.0, RepeatMSGB, TimerPack, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	char text2[MAXLENGTH_INPUT + 10];
 	if(HudSymbols)
 	{
