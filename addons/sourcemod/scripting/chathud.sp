@@ -14,7 +14,7 @@
 int color_hudA = 0;
 int color_hudB = 0;
 int number, onumber, number2, onumber2, hudAB;
-Handle timerHandle, timerHandle2, HudSyncA, HudSyncB ,kv;
+Handle timerHandle1, timerHandle2, HudSyncA, HudSyncB ,kv;
 char Path[PLATFORM_MAX_PATH];
 
 public Plugin myinfo = 
@@ -173,10 +173,10 @@ public void Event_RoundStart(Handle event, const char[] name, bool dontBroadcast
 
 public void DeleteTimerA()
 {
-	if(timerHandle != INVALID_HANDLE)
+	if(timerHandle1 != INVALID_HANDLE)
 	{
-		KillTimer(timerHandle);
-		timerHandle = INVALID_HANDLE;
+		KillTimer(timerHandle1);
+		timerHandle1 = INVALID_HANDLE;
 	}
 }
 
@@ -398,14 +398,14 @@ public int StringEnder(char[] a, int b, int c)
 
 public void InitCountDownA(char[] text)
 {
-	if(timerHandle != INVALID_HANDLE)
+	if(timerHandle1 != INVALID_HANDLE)
 	{
-		KillTimer(timerHandle);
-		timerHandle = INVALID_HANDLE;
+		KillTimer(timerHandle1);
+		timerHandle1 = INVALID_HANDLE;
 	}
 
 	DataPack TimerPack;
-	timerHandle = CreateDataTimer(1.0, RepeatMSGA, TimerPack, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	timerHandle1 = CreateDataTimer(1.0, RepeatMSGA, TimerPack, TIMER_REPEAT);
 	char text2[MAXLENGTH_INPUT + 10];
 	if(HudSymbols)
 	{
@@ -487,7 +487,7 @@ public void InitCountDownB(char[] text)
 	}
 
 	DataPack TimerPack;
-	timerHandle2 = CreateDataTimer(1.0, RepeatMSGB, TimerPack, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	timerHandle2 = CreateDataTimer(1.0, RepeatMSGB, TimerPack, TIMER_REPEAT);
 	char text2[MAXLENGTH_INPUT + 10];
 	if(HudSymbols)
 	{
