@@ -4,7 +4,7 @@
 * Sorry for my English.
 
 * Author AntiTeal, Anubis Edition
-* Version = 1.1-A, Anubis edition
+* Version = 1.1-B, Anubis edition
 
 ### Countdown HUD on the screen, with 2 Lines!
 With the possibility of altering and translating the messages of the Map.
