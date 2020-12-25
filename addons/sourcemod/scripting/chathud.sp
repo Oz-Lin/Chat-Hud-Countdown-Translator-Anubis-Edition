@@ -7,14 +7,13 @@
 
 #pragma newdecls required // let's go new syntax! 
 
-#pragma newdecls required
 #define MAXLENGTH_INPUT 		128
-#define PLUGIN_VERSION 		"1.1-A"
+#define PLUGIN_VERSION 		"1.1-B"
 
 int color_hudA = 0;
 int color_hudB = 0;
 int number, onumber, number2, onumber2, hudAB;
-Handle timerHandle1, timerHandle2, HudSyncA, HudSyncB ,kv;
+Handle timerHandle1 = INVALID_HANDLE, timerHandle2 = INVALID_HANDLE, HudSyncA, HudSyncB ,kv;
 char Path[PLATFORM_MAX_PATH];
 
 public Plugin myinfo = 
@@ -41,6 +40,7 @@ public void OnPluginStart()
 	//AddCommandListener(Chat, "say");
 	RegConsoleCmd("say", SayConsole);
 	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
+	HookEvent("round_end", Event_RoundEnd, EventHookMode_PostNoCopy);
 
 	DeleteTimerA();
 	DeleteTimerB();
@@ -166,6 +166,12 @@ public void ConVarChange(ConVar convar, char[] oldValue, char[] newValue)
 }
 
 public void Event_RoundStart(Handle event, const char[] name, bool dontBroadcast)
+{
+	DeleteTimerA();
+	DeleteTimerB();
+}
+
+public void Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast)
 {
 	DeleteTimerA();
 	DeleteTimerB();
