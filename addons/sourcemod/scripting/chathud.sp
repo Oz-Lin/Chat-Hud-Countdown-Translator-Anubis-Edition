@@ -8,7 +8,7 @@
 #pragma newdecls required // let's go new syntax! 
 
 #define MAXLENGTH_INPUT 		128
-#define PLUGIN_VERSION 		"1.2-A"
+#define PLUGIN_VERSION 		"1.2-B"
 
 int color_hudA = 0;
 int color_hudB = 0;
@@ -169,12 +169,14 @@ public void Event_RoundStart(Handle event, const char[] name, bool dontBroadcast
 {
 	DeleteTimerA();
 	DeleteTimerB();
+	hudAB = 1;
 }
 
 public void Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast)
 {
 	DeleteTimerA();
 	DeleteTimerB();
+	hudAB = 1;
 }
 
 public void DeleteTimerA()
@@ -450,12 +452,12 @@ public void InitCountDownA(char[] text)
 	}
 
 	TimerPack.WriteString(text2);
+	hudAB = 2;
 
 	for (int i = 1; i <= MAXPLAYERS + 1; i++)
 	{
 		if(IsValidClient(i))
 		{
-			hudAB = 2;
 			SendHudMsgA(i, text2);
 		}
 	}
@@ -468,6 +470,7 @@ public Action RepeatMSGA(Handle timer, Handle pack)
 	{
 		DeleteTimerA();
 		color_hudA = 0;
+		hudAB = 1;
 		for (int i = 1; i <= MAXPLAYERS + 1; i++)
 		{
 			if(IsValidClient(i))
@@ -532,12 +535,12 @@ public void InitCountDownB(char[] text)
 	}
 
 	TimerPack.WriteString(text2);
+	hudAB = 1;
 
 	for (int i = 1; i <= MAXPLAYERS + 1; i++)
 	{
 		if(IsValidClient(i))
 		{
-			hudAB = 1;
 			SendHudMsgB(i, text2);
 		}
 	}
@@ -550,6 +553,7 @@ public Action RepeatMSGB(Handle timer, Handle pack)
 	{
 		DeleteTimerB();
 		color_hudB = 0;
+		hudAB = 2;
 		for (int i = 1; i <= MAXPLAYERS + 1; i++)
 		{
 			if(IsValidClient(i))
