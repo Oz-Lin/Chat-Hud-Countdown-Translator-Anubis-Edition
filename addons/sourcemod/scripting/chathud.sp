@@ -35,8 +35,6 @@ bool csgo;
 
 public void OnPluginStart()
 {
-	CreateConVar("sm_chathud_version", PLUGIN_VERSION, "ChatHud_Translator Version", FCVAR_SPONLY|FCVAR_REPLICATED|FCVAR_NOTIFY);
-
 	//AddCommandListener(Chat, "say");
 	RegConsoleCmd("say", SayConsole);
 	HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
@@ -306,11 +304,6 @@ public Action SayConsole(int client, int args)
 							consoleNumber = StringEnder(word, 3, len);
 							isCountable = true;
 						}
-					}
-
-					if(isCountable)
-					{
-						return Plugin_Continue;
 					}
 				}
 			}
