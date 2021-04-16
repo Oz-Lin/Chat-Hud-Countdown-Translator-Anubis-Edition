@@ -7,7 +7,7 @@
 
 #pragma newdecls required // let's go new syntax! 
 
-#define MAXLENGTH_INPUT 		128
+#define MAXLENGTH_INPUT 		256
 #define PLUGIN_VERSION 		"1.2-B"
 
 int color_hudA = 0;
