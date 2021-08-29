@@ -64,9 +64,6 @@ Handle g_hHudSyncB = INVALID_HANDLE;
 Handle g_hKvChatHud = INVALID_HANDLE;
 Handle g_hKvChatHudAdmin = INVALID_HANDLE;
 
-Handle g_hmp_maxmoney = INVALID_HANDLE;
-Handle g_hsv_disable_radar = INVALID_HANDLE;
-
 Handle g_hChatHud = INVALID_HANDLE;
 Handle g_hChatMap = INVALID_HANDLE;
 Handle g_hChatSound = INVALID_HANDLE;
@@ -76,8 +73,6 @@ Handle g_hHudPosition = INVALID_HANDLE;
 char g_sPathChatHud[PLATFORM_MAX_PATH];
 char g_sClLang[MAXPLAYERS+1][3];
 char g_sLineComapare[MAXLENGTH_INPUT];
-char g_sValue_mp_maxmoney[10];
-char g_sValue_sv_disable_radar[10];
 
 int g_iNumberA;
 int g_iNumberB;
@@ -156,12 +151,8 @@ public void OnPluginStart()
 	ChatHudColorRead();
 
 	AutoExecConfig(true, "Chat_hud");
-
-
-	g_hmp_maxmoney = FindConVar("mp_maxmoney");
-	GetConVarString(g_hmp_maxmoney, g_sValue_mp_maxmoney, sizeof(g_sValue_mp_maxmoney));
-	g_hsv_disable_radar = FindConVar("sv_disable_radar");
-	GetConVarString(g_hsv_disable_radar, g_sValue_sv_disable_radar, sizeof(g_sValue_sv_disable_radar));
+	
+	SetCookieMenuItem(PrefMenu, 0, "Chat Hud");
 
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -189,6 +180,22 @@ public void OnMapStart()
 	LoadTranslations("common.phrases");
 	LoadTranslations("core.phrases");
 	ReadFileChatHud();
+}
+
+public void PrefMenu(int client, CookieMenuAction actions, any info, char[] buffer, int maxlen)
+{
+	if(actions == CookieMenuAction_DisplayOption)
+	{
+		FormatEx(buffer, maxlen, "%T", "Cookie_Menu", client);
+	}
+
+	if(actions == CookieMenuAction_SelectOption)
+	{
+		if(g_bChatHud)
+		{
+			MenuClientChud(client);
+		}
+	}
 }
 
 public void OnClientPutInServer(int client)
@@ -400,8 +407,6 @@ void MenuClientChud(int client)
 		return;
 	}
 
-	SendConVarValue(client, g_hmp_maxmoney, "0");
-	SendConVarValue(client, g_hsv_disable_radar, "1");
 	SetGlobalTransTarget(client);
 	g_iItemSettings[client] = 0;
 
@@ -439,7 +444,7 @@ void MenuClientChud(int client)
 
 	Menu MenuCHud = new Menu(MenuClientCHudCallBack);
 
-	MenuCHud.ExitButton = true;
+	MenuCHud.ExitBackButton = true;
 	MenuCHud.SetTitle(m_sTitle);
 
 	MenuCHud.AddItem("Time Counter", m_sChatHud);
@@ -498,11 +503,7 @@ public int MenuClientCHudCallBack(Handle MenuCHud, MenuAction action, int client
 
 	if (action == MenuAction_Cancel)
 	{
-		if (IsValidClient(client))
-		{
-			SendConVarValue(client, g_hmp_maxmoney, g_sValue_mp_maxmoney);
-			SendConVarValue(client, g_hsv_disable_radar, g_sValue_sv_disable_radar);
-		}
+		if(itemNum == MenuCancel_ExitBack) ShowCookieMenu(client);
 	}
 
 	return 0;
@@ -523,8 +524,6 @@ void MenuAdminChud(int client, bool MenuAdmin2 = false, char[] ItemMenu = "")
 	}
 
 	SetGlobalTransTarget(client);
-	SendConVarValue(client, g_hmp_maxmoney, "0");
-	SendConVarValue(client, g_hsv_disable_radar, "1");
 
 	char sBuffer_temp[MAXLENGTH_INPUT];
 	char sBuffer_temp2[MAXLENGTH_INPUT];
@@ -594,8 +593,6 @@ void MenuAdminChud(int client, bool MenuAdmin2 = false, char[] ItemMenu = "")
 		{
 			if (IsValidClient(client))
 			{
-				SendConVarValue(client, g_hmp_maxmoney, g_sValue_mp_maxmoney);
-				SendConVarValue(client, g_hsv_disable_radar, g_sValue_sv_disable_radar);
 				CPrintToChat(client, "%t", "No Messages found");
 			}
 			KvRewind(g_hKvChatHudAdmin);
@@ -649,11 +646,6 @@ public int MenuAdminChudCallBack(Handle MenuChudAdmin, MenuAction action, int cl
 
 	if (action == MenuAction_Cancel)
 	{
-		if (IsValidClient(client))
-		{
-			SendConVarValue(client, g_hmp_maxmoney, g_sValue_mp_maxmoney);
-			SendConVarValue(client, g_hsv_disable_radar, g_sValue_sv_disable_radar);
-		}
 		KvRewind(g_hKvChatHudAdmin);
 	}
 
@@ -1077,7 +1069,7 @@ stock char RemoveItens(const char[] s_Format, any...)
 	char s_Text[MAXLENGTH_INPUT];
 	VFormat(s_Text, sizeof(s_Text), s_Format, 2);
 	/* Removes itens */
-	char s_RemoveItens[][] = {"#", ">", "<", "*"};
+	char s_RemoveItens[][] = {"#", ">", "<", "*", "-", "_", "=", "+"};
 	for(int i_Itens = 0; i_Itens < sizeof(s_RemoveItens); i_Itens++ ) {
 		ReplaceString(s_Text, sizeof(s_Text), s_RemoveItens[i_Itens], "", false);
 	}
