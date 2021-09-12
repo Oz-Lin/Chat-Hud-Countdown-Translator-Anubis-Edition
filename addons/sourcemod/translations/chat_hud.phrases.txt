@@ -38,7 +38,7 @@
 	}
 	"Desable"
 	{
-		"en"		"Desable"
+		"en"		"Disable"
 		"pt"		"Desabilitar"
 	}
 	"Enabled"
@@ -48,7 +48,7 @@
 	}
 	"Desabled"
 	{
-		"en"		"Desabled"
+		"en"		"Disabled"
 		"pt"		"Desativado"
 	}
 	"Change Hud Position"
