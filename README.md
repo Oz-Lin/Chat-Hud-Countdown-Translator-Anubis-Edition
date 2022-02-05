@@ -4,7 +4,7 @@
 * Sorry for my English.
 
 * Author Anubis.
-* Version = 2.0
+* Version = 2.1
 
 ### Countdown HUD on the screen, with 2 Lines!
 With the possibility of altering and translating the messages of the Map.
@@ -13,9 +13,14 @@ automatically generated !!
 
 ### New
 
-* Client menu and admin menu.
+* Client menu.
 * Alert sound when resetting the scanner.
 * Client preferences.
+
+### New BETA version
+
+* Still in testing , but it uses the google API to generate the translations of the map in the server language .
+* I have difficulty in "REST JSON APIs" so I did it using identifiers. There may be errors in the translation having to check sometimes.
 
 ### Server ConVars
 
@@ -29,7 +34,6 @@ automatically generated !!
 ### Commands
 
 * sm_chud - Client Preferences
-* sm_chudadmin - Admin Enable/Disable messages.
 
 ### Credits
 

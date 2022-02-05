@@ -39,6 +39,7 @@
 #include <sdktools>
 #include <clientprefs>
 #include <csgocolors_fix>
+#include <SteamWorks>
 
 #pragma newdecls required
 
@@ -71,6 +72,7 @@ Handle g_hHudPosition = INVALID_HANDLE;
 
 char g_sPathChatHud[PLATFORM_MAX_PATH];
 char g_sClLang[MAXPLAYERS+1][3];
+char g_sServerLang[3];
 char g_sLineComapare[MAXLENGTH_INPUT];
 
 int g_iNumberA;
@@ -91,6 +93,8 @@ float g_fAvoidSpankingTime;
 
 bool g_bChatHud;
 bool g_bAvoidSpanking;
+bool b_IsCountable = false;
+bool b_IsTranlate = false;
 
 enum struct ChatHud_Enum
 {
@@ -160,6 +164,7 @@ public void OnPluginStart()
 			OnClientCookiesCached(i);
 		}
 	}
+	GetLanguageInfo(GetServerLanguage(), g_sServerLang, sizeof(g_sServerLang));
 }
 
 public void ColorStringToArray(const char[] sColorString, int aColor[3])
@@ -520,6 +525,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 {
 	if(client == 0)
 	{
+		if(b_IsTranlate) return Plugin_Continue;
 		if(!g_hKvChatHud)
 		{
 			ReadFileChatHud();
@@ -527,10 +533,10 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		}
 		KvRewind(g_hKvChatHud);
 
-		char s_ConsoleChats[MAXLENGTH_INPUT], s_ConsoleChat[MAXLENGTH_INPUT], Buffer_Temp[MAXLENGTH_INPUT], s_FilterText[sizeof(s_ConsoleChat)+1], s_ChatArray[32][MAXLENGTH_INPUT];
+		char s_ConsoleChats[MAXLENGTH_INPUT], s_ConsoleChat[MAXLENGTH_INPUT], s_FilterText[sizeof(s_ConsoleChat)+1], s_ChatArray[32][MAXLENGTH_INPUT];
 		char s_PrintText[MAXLENGTH_INPUT], s_PrintHud[MAXLENGTH_INPUT], s_Soundp[MAXLENGTH_INPUT], s_Soundt[MAXLENGTH_INPUT];
 		int i_ConsoleNumber, i_FilterPos;
-		bool b_IsCountable = false;
+		
 
 		strcopy(s_ConsoleChats, sizeof(s_ConsoleChats), sArgs);
 		StripQuotes(s_ConsoleChats);
@@ -609,15 +615,33 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		}
 		if(!KvJumpToKey(g_hKvChatHud, s_ConsoleChat))
 		{
-			KvJumpToKey(g_hKvChatHud, s_ConsoleChat, true);
-			KvSetNum(g_hKvChatHud, "enabled", 1);
-			Format(Buffer_Temp, sizeof(Buffer_Temp), "{red}[Console] {yellow}► {green}%s {yellow}◄", s_ConsoleChat);
-			KvSetString(g_hKvChatHud, "default", Buffer_Temp);
-			Format(Buffer_Temp, sizeof(Buffer_Temp), "► %s ◄", s_ConsoleChat);
-			if(b_IsCountable) KvSetString(g_hKvChatHud, "ChatHud", Buffer_Temp);
-			KvRewind(g_hKvChatHud);
-			KeyValuesToFile(g_hKvChatHud, g_sPathChatHud);
-			KvJumpToKey(g_hKvChatHud, s_ConsoleChat);
+			b_IsTranlate = true;
+			if(strlen(g_sServerLang) == 0) g_sServerLang = "en";
+			CreateRequest(s_ConsoleChat, g_sServerLang);
+			//if(b_IsCountable && !CheckString(s_ConsoleChat))
+			if(b_IsCountable)
+			{
+				if (g_ihudAB == 1)
+				{
+				g_iNumberA = i_ConsoleNumber;
+				g_iONumberA = i_ConsoleNumber;
+				}
+				else
+				{
+				g_iNumberB = i_ConsoleNumber;
+				g_iONumberB = i_ConsoleNumber;
+				}
+				InitCountDown(s_ConsoleChat);
+			}
+			for(int i = 1 ; i < MaxClients; i++)
+			{
+				if(IsValidClient(i) && ChatHudClientEnum[i].e_bChatMap)
+				{
+					CPrintToChat(i, "{red}[Console] {yellow}► {green}%s {yellow}◄", s_ConsoleChat);
+					if(ChatHudClientEnum[i].e_bChatSound) EmitSoundToClient(i, "common/talk.wav", _, SNDCHAN_AUTO);
+				}
+			}
+			return Plugin_Stop;
 		}
 		if (KvGetNum(g_hKvChatHud, "enabled") <= 0)
 		{
@@ -719,6 +743,75 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 	}
 
 	return Plugin_Continue;
+}
+
+void CreateRequest(char[] input, char[] target)
+{
+
+	char s_ConsoleChatsTranslate[MAXLENGTH_INPUT];
+	Handle datapack = CreateDataPack();
+
+	Format(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), "--%s--", input);
+	ReplaceString(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), ". ", ".");
+	ReplaceString(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), "! ", "!");
+	ReplaceString(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), "? ", "?");
+	ReplaceString(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), ": ", ":");
+	ReplaceString(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), "&", "e");
+
+	Handle request = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, "http://translate.googleapis.com/translate_a/single");
+	SteamWorks_SetHTTPRequestGetOrPostParameter(request, "client", "gtx");
+	SteamWorks_SetHTTPRequestGetOrPostParameter(request, "dt", "t");	
+	SteamWorks_SetHTTPRequestGetOrPostParameter(request, "sl", "auto");
+	SteamWorks_SetHTTPRequestGetOrPostParameter(request, "tl", target);
+	SteamWorks_SetHTTPRequestGetOrPostParameter(request, "q", s_ConsoleChatsTranslate);
+
+	WritePackString(datapack, target);
+	WritePackString(datapack, input);
+
+	SteamWorks_SetHTTPRequestContextValue(request, datapack);
+	SteamWorks_SetHTTPCallbacks(request, Callback_OnHTTPResponse);
+	SteamWorks_SendHTTPRequest(request);
+}
+
+public int Callback_OnHTTPResponse(Handle request, bool bFailure, bool bRequestSuccessful, EHTTPStatusCode eStatusCode, Handle datapack)
+{
+	if (!bRequestSuccessful || eStatusCode != k_EHTTPStatusCode200OK)
+	{	  
+		CloseHandle(datapack);
+		b_IsCountable = false;
+		b_IsTranlate = false;		
+		return;
+	}
+
+	int iBufferSize;
+	SteamWorks_GetHTTPResponseBodySize(request, iBufferSize);
+
+	char[] result = new char[iBufferSize];
+	SteamWorks_GetHTTPResponseBodyData(request, result, iBufferSize);
+	delete request;
+	
+	char target[3], input[255], Buffer_Temp[MAXLENGTH_INPUT], s_Text_Temp[2][PLATFORM_MAX_PATH];
+	ResetPack(datapack);
+	ReadPackString(datapack, target, 3);
+	ReadPackString(datapack, input, 255);
+	CloseHandle(datapack);
+	
+	KvRewind(g_hKvChatHud);
+	ExplodeString(result, "--", s_Text_Temp, 2, sizeof(s_Text_Temp[]));
+
+	KvJumpToKey(g_hKvChatHud, input, true);
+	KvSetNum(g_hKvChatHud, "enabled", 1);
+	Format(Buffer_Temp, sizeof(Buffer_Temp), "{red}[Console] {yellow}► {green}%s {yellow}◄", input);
+	KvSetString(g_hKvChatHud, "default", Buffer_Temp);
+	Format(Buffer_Temp, sizeof(Buffer_Temp), "{red}[Console] {yellow}► {green}%s {yellow}◄", s_Text_Temp[1]);
+	KvSetString(g_hKvChatHud, target, Buffer_Temp);
+	Format(Buffer_Temp, sizeof(Buffer_Temp), "► %s ◄", s_Text_Temp[1]);
+	if(b_IsCountable) KvSetString(g_hKvChatHud, "ChatHud", Buffer_Temp);
+	KvRewind(g_hKvChatHud);
+	KeyValuesToFile(g_hKvChatHud, g_sPathChatHud);
+	KvRewind(g_hKvChatHud);
+	b_IsCountable = false;
+	b_IsTranlate = false;
 }
 
 public bool CharEqual(int a, int b)

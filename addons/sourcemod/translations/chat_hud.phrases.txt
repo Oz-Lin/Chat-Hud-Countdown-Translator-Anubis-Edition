@@ -38,7 +38,7 @@
 	}
 	"Desable"
 	{
-		"en"		"Disable"
+		"en"		"Desable"
 		"pt"		"Desabilitar"
 	}
 	"Enabled"
@@ -48,7 +48,7 @@
 	}
 	"Desabled"
 	{
-		"en"		"Disabled"
+		"en"		"Desabled"
 		"pt"		"Desativado"
 	}
 	"Change Hud Position"
@@ -88,5 +88,10 @@
 		"#format"	"{1:s}"
 		"en"		"Chat Hud Admin\n \n{1} [Disabled]\n "
 		"pt"		"Chat Hud Admin\n \n{1} [Desativado]\n "
+	}
+	"Cookie_Menu"
+	{
+		"en"		"Chat Hud"
+		"pt"		"Chat Hud"
 	}
 }
