@@ -4,7 +4,7 @@
 * Sorry for my English.
 
 * Author Anubis.
-* Version = 2.1
+* Version = 2.2
 
 ### Countdown HUD on the screen, with 2 Lines!
 With the possibility of altering and translating the messages of the Map.
@@ -16,11 +16,12 @@ automatically generated !!
 * Client menu.
 * Alert sound when resetting the scanner.
 * Client preferences.
-
-### New BETA version
-
 * Still in testing , but it uses the google API to generate the translations of the map in the server language .
-* I have difficulty in "REST JSON APIs" so I did it using identifiers. There may be errors in the translation having to check sometimes.
+
+### Requires
+
+* SMJansson - https://github.com/thraaawn/SMJansson
+* SteamWorks - https://github.com/KyleSanderson/SteamWorks
 
 ### Server ConVars
 
@@ -30,6 +31,7 @@ automatically generated !!
 * sm_chat_hud_time_changecolor - Set the final time for Hud to change colors.
 * sm_chat_hud_color_1 - RGB color value for the hud Start.
 * sm_chat_hud_color_2 - RGB color value for the hud Finish.
+* sm_chat_hud_auto_translate - Chat Hud Auto Translate Enable = 1/Disable = 0
 
 ### Commands
 

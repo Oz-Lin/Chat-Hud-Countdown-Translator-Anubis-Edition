@@ -31,7 +31,7 @@
 #define PLUGIN_NAME           "Chat_Hud"
 #define PLUGIN_AUTHOR         "Anubis"
 #define PLUGIN_DESCRIPTION    "Countdown timers based on messages from maps. And translations of map messages."
-#define PLUGIN_VERSION        "2.1"
+#define PLUGIN_VERSION        "2.2"
 #define PLUGIN_URL            "https://github.com/Stewart-Anubis"
 
 #pragma semicolon 1
@@ -39,6 +39,9 @@
 #include <sdktools>
 #include <clientprefs>
 #include <csgocolors_fix>
+#include <SteamWorks>
+//#include <json>
+#include <smjansson>
 
 #pragma newdecls required
 
@@ -56,6 +59,7 @@ ConVar g_cAvoidSpankingTime = null;
 ConVar g_changecolor = null;
 ConVar g_cVHudColor1 = null;
 ConVar g_cVHudColor2 = null;
+ConVar g_cAutoTranslate = null;
 
 Handle g_hTimerHandleA = INVALID_HANDLE;
 Handle g_hTimerHandleB = INVALID_HANDLE;
@@ -71,6 +75,7 @@ Handle g_hHudPosition = INVALID_HANDLE;
 
 char g_sPathChatHud[PLATFORM_MAX_PATH];
 char g_sClLang[MAXPLAYERS+1][3];
+char g_sServerLang[3];
 char g_sLineComapare[MAXLENGTH_INPUT];
 
 int g_iNumberA;
@@ -90,7 +95,10 @@ float g_fColor_Time;
 float g_fAvoidSpankingTime;
 
 bool g_bChatHud;
+bool g_bAutoTranslate;
 bool g_bAvoidSpanking;
+bool b_IsCountable = false;
+bool b_IsTranlate = false;
 
 enum struct ChatHud_Enum
 {
@@ -134,6 +142,7 @@ public void OnPluginStart()
 	g_changecolor = CreateConVar("sm_chat_hud_time_changecolor", "3", "Set the final time for Hud to change colors.");
 	g_cVHudColor1 = CreateConVar("sm_chat_hud_color_1", "0 255 0", "RGB color value for the hud Start.");
 	g_cVHudColor2 = CreateConVar("sm_chat_hud_color_2", "255 0 0", "RGB color value for the hud Finish.");
+	g_cAutoTranslate = CreateConVar("sm_chat_hud_auto_translate", "1", "Chat Hud Auto Translate Enable = 1/Disable = 0");
 
 	g_cChatHud.AddChangeHook(ConVarChange);
 	g_cAvoidSpanking.AddChangeHook(ConVarChange);
@@ -141,12 +150,9 @@ public void OnPluginStart()
 	g_changecolor.AddChangeHook(ConVarChange);
 	g_cVHudColor1.AddChangeHook(ConVarChange);
 	g_cVHudColor2.AddChangeHook(ConVarChange);
+	g_cAutoTranslate.AddChangeHook(ConVarChange);
 
-	g_bChatHud = g_cChatHud.BoolValue;
-	g_bAvoidSpanking = g_cAvoidSpanking.BoolValue;
-	g_fAvoidSpankingTime = g_cAvoidSpankingTime.FloatValue;
-	g_fColor_Time = g_changecolor.FloatValue;
-	ChatHudColorRead();
+	ConVarChange(null, "", "");
 
 	AutoExecConfig(true, "Chat_hud");
 	
@@ -160,6 +166,7 @@ public void OnPluginStart()
 			OnClientCookiesCached(i);
 		}
 	}
+	GetLanguageInfo(GetServerLanguage(), g_sServerLang, sizeof(g_sServerLang));
 }
 
 public void ColorStringToArray(const char[] sColorString, int aColor[3])
@@ -319,6 +326,7 @@ public void ConVarChange(ConVar convar, char[] oldValue, char[] newValue)
 	g_bAvoidSpanking = g_cAvoidSpanking.BoolValue;
 	g_fAvoidSpankingTime = g_cAvoidSpankingTime.FloatValue;
 	g_fColor_Time = g_changecolor.FloatValue;
+	g_bAutoTranslate = g_cAutoTranslate.BoolValue;
 	ChatHudColorRead();
 }
 
@@ -520,6 +528,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 {
 	if(client == 0)
 	{
+		if(g_bAutoTranslate && b_IsTranlate) return Plugin_Continue;
 		if(!g_hKvChatHud)
 		{
 			ReadFileChatHud();
@@ -527,10 +536,10 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		}
 		KvRewind(g_hKvChatHud);
 
-		char s_ConsoleChats[MAXLENGTH_INPUT], s_ConsoleChat[MAXLENGTH_INPUT], Buffer_Temp[MAXLENGTH_INPUT], s_FilterText[sizeof(s_ConsoleChat)+1], s_ChatArray[32][MAXLENGTH_INPUT];
-		char s_PrintText[MAXLENGTH_INPUT], s_PrintHud[MAXLENGTH_INPUT], s_Soundp[MAXLENGTH_INPUT], s_Soundt[MAXLENGTH_INPUT];
+		char s_ConsoleChats[MAXLENGTH_INPUT], s_ConsoleChat[MAXLENGTH_INPUT], s_FilterText[sizeof(s_ConsoleChat)+1], s_ChatArray[32][MAXLENGTH_INPUT];
+		char s_PrintText[MAXLENGTH_INPUT], s_PrintHud[MAXLENGTH_INPUT], s_Soundp[MAXLENGTH_INPUT], s_Soundt[MAXLENGTH_INPUT], Buffer_Temp[MAXLENGTH_INPUT];
 		int i_ConsoleNumber, i_FilterPos;
-		bool b_IsCountable = false;
+		
 
 		strcopy(s_ConsoleChats, sizeof(s_ConsoleChats), sArgs);
 		StripQuotes(s_ConsoleChats);
@@ -609,15 +618,48 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		}
 		if(!KvJumpToKey(g_hKvChatHud, s_ConsoleChat))
 		{
-			KvJumpToKey(g_hKvChatHud, s_ConsoleChat, true);
-			KvSetNum(g_hKvChatHud, "enabled", 1);
-			Format(Buffer_Temp, sizeof(Buffer_Temp), "{red}[Console] {yellow}► {green}%s {yellow}◄", s_ConsoleChat);
-			KvSetString(g_hKvChatHud, "default", Buffer_Temp);
-			Format(Buffer_Temp, sizeof(Buffer_Temp), "► %s ◄", s_ConsoleChat);
-			if(b_IsCountable) KvSetString(g_hKvChatHud, "ChatHud", Buffer_Temp);
-			KvRewind(g_hKvChatHud);
-			KeyValuesToFile(g_hKvChatHud, g_sPathChatHud);
-			KvJumpToKey(g_hKvChatHud, s_ConsoleChat);
+			if(g_bAutoTranslate)
+			{
+				b_IsTranlate = true;
+				if(strlen(g_sServerLang) == 0) g_sServerLang = "en";
+				CreateRequest(s_ConsoleChat, g_sServerLang);
+				//if(b_IsCountable && !CheckString(s_ConsoleChat))
+				if(b_IsCountable)
+				{
+					if (g_ihudAB == 1)
+					{
+					g_iNumberA = i_ConsoleNumber;
+					g_iONumberA = i_ConsoleNumber;
+					}
+					else
+					{
+					g_iNumberB = i_ConsoleNumber;
+					g_iONumberB = i_ConsoleNumber;
+					}
+					InitCountDown(s_ConsoleChat);
+				}
+				for(int i = 1 ; i < MaxClients; i++)
+				{
+					if(IsValidClient(i) && ChatHudClientEnum[i].e_bChatMap)
+					{
+						CPrintToChat(i, "{red}[Console] {yellow}► {green}%s {yellow}◄", s_ConsoleChat);
+						if(ChatHudClientEnum[i].e_bChatSound) EmitSoundToClient(i, "common/talk.wav", _, SNDCHAN_AUTO);
+					}
+				}
+				return Plugin_Stop;
+			}
+			else
+			{
+				KvJumpToKey(g_hKvChatHud, s_ConsoleChat, true);
+				KvSetNum(g_hKvChatHud, "enabled", 1);
+				Format(Buffer_Temp, sizeof(Buffer_Temp), "{red}[Console] {yellow}► {green}%s {yellow}◄", s_ConsoleChat);
+				KvSetString(g_hKvChatHud, "default", Buffer_Temp);
+				Format(Buffer_Temp, sizeof(Buffer_Temp), "► %s ◄", s_ConsoleChat);
+				if(b_IsCountable) KvSetString(g_hKvChatHud, "ChatHud", Buffer_Temp);
+				KvRewind(g_hKvChatHud);
+				KeyValuesToFile(g_hKvChatHud, g_sPathChatHud);
+				KvJumpToKey(g_hKvChatHud, s_ConsoleChat);
+			}
 		}
 		if (KvGetNum(g_hKvChatHud, "enabled") <= 0)
 		{
@@ -719,6 +761,108 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 	}
 
 	return Plugin_Continue;
+}
+
+void CreateRequest(char[] input, char[] target)
+{
+
+	char s_ConsoleChatsTranslate[MAXLENGTH_INPUT];
+	Handle datapack = CreateDataPack();
+
+	Format(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), "%s", input);
+	ReplaceString(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), ". ", ".");
+	ReplaceString(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), "! ", "!");
+	ReplaceString(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), "? ", "?");
+	ReplaceString(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), ": ", ":");
+	ReplaceString(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), "&", "e");
+
+	Handle request = SteamWorks_CreateHTTPRequest(k_EHTTPMethodGET, "http://translate.googleapis.com/translate_a/single");
+	SteamWorks_SetHTTPRequestGetOrPostParameter(request, "client", "gtx");
+	SteamWorks_SetHTTPRequestGetOrPostParameter(request, "dt", "t");	
+	SteamWorks_SetHTTPRequestGetOrPostParameter(request, "sl", "auto");
+	SteamWorks_SetHTTPRequestGetOrPostParameter(request, "tl", target);
+	SteamWorks_SetHTTPRequestGetOrPostParameter(request, "q", s_ConsoleChatsTranslate);
+
+	WritePackString(datapack, target);
+	WritePackString(datapack, input);
+
+	SteamWorks_SetHTTPRequestContextValue(request, datapack);
+	SteamWorks_SetHTTPCallbacks(request, Callback_OnHTTPResponse);
+	SteamWorks_SendHTTPRequest(request);
+}
+
+public int Callback_OnHTTPResponse(Handle request, bool bFailure, bool bRequestSuccessful, EHTTPStatusCode eStatusCode, Handle datapack)
+{
+	if (!bRequestSuccessful || eStatusCode != k_EHTTPStatusCode200OK)
+	{	  
+		CloseHandle(datapack);
+		b_IsCountable = false;
+		b_IsTranlate = false;		
+		return;
+	}
+
+	int iBufferSize;
+	SteamWorks_GetHTTPResponseBodySize(request, iBufferSize);
+
+	char[] result = new char[iBufferSize];
+	SteamWorks_GetHTTPResponseBodyData(request, result, iBufferSize);
+	delete request;
+	
+	char target[3], input[255], Buffer_Temp[MAXLENGTH_INPUT], s_Text_Temp[MAXLENGTH_INPUT];
+	ResetPack(datapack);
+	ReadPackString(datapack, target, 3);
+	ReadPackString(datapack, input, 255);
+	CloseHandle(datapack);
+	
+	/* //#include <json>
+	JSON_Array arrayA = view_as<JSON_Array>(json_decode(result));
+	JSON_Array arrayB = view_as<JSON_Array>(arrayA.GetObject(0));
+	JSON_Array arrayC = view_as<JSON_Array>(arrayB.GetObject(0));
+	arrayC.GetString(0, s_Text_Temp, sizeof(s_Text_Temp));
+	delete arrayA;
+	delete arrayB;
+	delete arrayC;
+	*/ //#include <json>
+	
+	// #include <smjansson>
+	Handle arrayA = json_load(result);
+
+	if(json_is_array(arrayA))
+	{
+		Handle arrayB = json_array_get(arrayA, 0);
+		Handle arrayC = json_array_get(arrayB, 0);
+		json_array_get_string(arrayC, 0, s_Text_Temp, sizeof(s_Text_Temp));
+		delete arrayB;
+		delete arrayC;
+	}
+	else
+	{
+		delete arrayA;
+		b_IsCountable = false;
+		b_IsTranlate = false;
+		return;
+	}
+	
+	delete arrayA;
+	// #include <smjansson>
+	
+	if(strlen(s_Text_Temp) != 0)
+	{
+		KvRewind(g_hKvChatHud);
+		KvJumpToKey(g_hKvChatHud, input, true);
+		KvSetNum(g_hKvChatHud, "enabled", 1);
+		Format(Buffer_Temp, sizeof(Buffer_Temp), "{red}[Console] {yellow}► {green}%s {yellow}◄", input);
+		KvSetString(g_hKvChatHud, "default", Buffer_Temp);
+		Format(Buffer_Temp, sizeof(Buffer_Temp), "{red}[Console] {yellow}► {green}%s {yellow}◄", s_Text_Temp);
+		KvSetString(g_hKvChatHud, target, Buffer_Temp);
+		Format(Buffer_Temp, sizeof(Buffer_Temp), "► %s ◄", s_Text_Temp);
+		if(b_IsCountable) KvSetString(g_hKvChatHud, "ChatHud", Buffer_Temp);
+		KvRewind(g_hKvChatHud);
+		KeyValuesToFile(g_hKvChatHud, g_sPathChatHud);
+		KvRewind(g_hKvChatHud);
+	}
+	b_IsCountable = false;
+	b_IsTranlate = false;
 }
 
 public bool CharEqual(int a, int b)
