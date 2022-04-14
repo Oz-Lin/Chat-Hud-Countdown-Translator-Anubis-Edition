@@ -46,4 +46,4 @@ automatically generated !!
 * AntiTeal - countdownhud
 * Franc1sco franug - franug_consolechatmanager
 
-![alt text](https://raw.githubusercontent.com/Stewart-Anubis/Chat-Hud-Countdown-Translator-Anubis-Edition/main/img/img1.jpg)
+![alt text](https://raw.githubusercontent.com/Stewart-Anubis/Chat-Hud-Countdown-Translator-Anubis-Edition/main/img/1.jpg)
