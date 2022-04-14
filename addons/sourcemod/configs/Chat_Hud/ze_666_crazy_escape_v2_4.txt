@@ -1,0 +1,103 @@
+"Chat_Hud"
+{
+	"HOLD THE FOUNTAIN FOR 30 SECONDS"
+	{
+		"enabled"		"1"
+		"default"		"HOLD THE FOUNTAIN FOR 30 SECONDS"
+		"pt"		"SEGURE A FONTE POR 30 SEGUNDOS"
+		"ChatHud"		"SEGURE A FONTE POR 30 SEGUNDOS"
+	}
+	"10 SECONDS REMAINING"
+	{
+		"enabled"		"1"
+		"default"		"10 SECONDS REMAINING"
+		"pt"		"10 SEGUNDOS RESTANTES"
+		"ChatHud"		"10 SEGUNDOS RESTANTES"
+	}
+	"STAY IN THE FOUNTAIN FOR TELEPORT"
+	{
+		"enabled"		"1"
+		"default"		"STAY IN THE FOUNTAIN FOR TELEPORT"
+		"pt"		"FIQUE NA FONTE PARA O TELEPORTE"
+	}
+	"HIDE HERE FOR 60 SECONDS"
+	{
+		"enabled"		"1"
+		"default"		"HIDE HERE FOR 60 SECONDS"
+		"pt"		"ESCONDE AQUI POR 60 SEGUNDOS"
+		"ChatHud"		"ESCONDE AQUI POR 60 SEGUNDOS"
+	}
+	"ZOMBIES ARE INCOMING IN 5 SECONDS"
+	{
+		"enabled"		"1"
+		"default"		"ZOMBIES ARE INCOMING IN 5 SECONDS"
+		"pt"		"ZUMBIS ESTÃO CHEGANDO EM 5 SEGUNDOS"
+		"ChatHud"		"ZUMBIS ESTÃO CHEGANDO EM 5 SEGUNDOS"
+	}
+	"30 SECONDS REMAINING"
+	{
+		"enabled"		"1"
+		"default"		"30 SECONDS REMAINING"
+		"pt"		"30 SEGUNDOS RESTANTES"
+		"ChatHud"		"30 SEGUNDOS RESTANTES"
+	}
+	"TELEPORT INCOMING IN 30 SECONDS"
+	{
+		"enabled"		"1"
+		"default"		"TELEPORT INCOMING IN 30 SECONDS"
+		"pt"		"TELEPORTE ENTRADA EM 30 SEGUNDOS"
+		"ChatHud"		"TELEPORTE ENTRADA EM 30 SEGUNDOS"
+	}
+	"HELL BRIDGE SPAWNS IN 5 SECONDS"
+	{
+		"enabled"		"1"
+		"default"		"HELL BRIDGE SPAWNS IN 5 SECONDS"
+		"pt"		"A PONTE DO INFERNO SURGE EM 5 SEGUNDOS"
+		"ChatHud"		"A PONTE DO INFERNO SURGE EM 5 SEGUNDOS"
+	}
+	"DESTROY THE STATUE"
+	{
+		"enabled"		"1"
+		"default"		"DESTROY THE STATUE"
+		"pt"		"DESTRUIR A ESTÁTUA"
+	}
+	"HOLD HERE FOR 30 SECONDS"
+	{
+		"enabled"		"1"
+		"default"		"HOLD HERE FOR 30 SECONDS"
+		"pt"		"AGUARDE AQUI POR 30 SEGUNDOS"
+		"ChatHud"		"AGUARDE AQUI POR 30 SEGUNDOS"
+	}
+	"10 SECONDS REMAININGS"
+	{
+		"enabled"		"1"
+		"default"		"10 SECONDS REMAININGS"
+		"pt"		"10 SEGUNDOS RESTANTES"
+		"ChatHud"		"10 SEGUNDOS RESTANTES"
+	}
+	"KILL HIM BEFORE HE KILLS YOU"
+	{
+		"enabled"		"1"
+		"default"		"KILL HIM BEFORE HE KILLS YOU"
+		"pt"		"MATE-O ANTES QUE ELE TE MATA"
+	}
+	"DEFEND VENTS IN 10 SECONDS"
+	{
+		"enabled"		"1"
+		"default"		"DEFEND VENTS IN 10 SECONDS"
+		"pt"		"DEFENDER VENTILAÇÕES EM 10 SEGUNDOS"
+		"ChatHud"		"DEFENDER VENTILAÇÕES EM 10 SEGUNDOS"
+	}
+	"NARAKA HAS DISAPPEAR !!"
+	{
+		"enabled"		"1"
+		"default"		"NARAKA HAS DISAPPEAR !!"
+		"pt"		"NARAKA DESAPARECEU!!"
+	}
+	"SHHHHHHH ... NARAKA"
+	{
+		"enabled"		"1"
+		"default"		"SHHHHHHH ... NARAKA"
+		"pt"		"SHHHHHHH ... NARAKA"
+	}
+}

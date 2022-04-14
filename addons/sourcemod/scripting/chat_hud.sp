@@ -31,7 +31,7 @@
 #define PLUGIN_NAME           "Chat_Hud"
 #define PLUGIN_AUTHOR         "Anubis"
 #define PLUGIN_DESCRIPTION    "Countdown timers based on messages from maps. And translations of map messages."
-#define PLUGIN_VERSION        "2.2"
+#define PLUGIN_VERSION        "2.4"
 #define PLUGIN_URL            "https://github.com/Stewart-Anubis"
 
 #pragma semicolon 1
@@ -45,14 +45,6 @@
 
 #pragma newdecls required
 
-#define MAXLENGTH_INPUT 			256
-#define MAX_TEXT_LENGTH 			64
-
-#define MENU_LINE_REG_LENGTH 		64
-#define MENU_LINE_BIG_LENGTH 		128
-#define MENU_LINE_TITLE_LENGTH 	256
-#define HUGE_LINE_LENGTH 			512
-
 ConVar g_cChatHud = null;
 ConVar g_cAvoidSpanking = null;
 ConVar g_cAvoidSpankingTime = null;
@@ -60,6 +52,8 @@ ConVar g_changecolor = null;
 ConVar g_cVHudColor1 = null;
 ConVar g_cVHudColor2 = null;
 ConVar g_cAutoTranslate = null;
+ConVar g_cConsoleChat = null;
+ConVar g_cConsoleHud = null;
 
 Handle g_hTimerHandleA = INVALID_HANDLE;
 Handle g_hTimerHandleB = INVALID_HANDLE;
@@ -72,11 +66,16 @@ Handle g_hChatMap = INVALID_HANDLE;
 Handle g_hChatSound = INVALID_HANDLE;
 Handle g_hHudSound = INVALID_HANDLE;
 Handle g_hHudPosition = INVALID_HANDLE;
+Handle g_hLineComapare = INVALID_HANDLE;
 
 char g_sPathChatHud[PLATFORM_MAX_PATH];
 char g_sClLang[MAXPLAYERS+1][3];
 char g_sServerLang[3];
-char g_sLineComapare[MAXLENGTH_INPUT];
+char g_sLineComapare[256];
+char g_sConsoleChat[2][64];
+char g_sConsoleHud[2][64];
+char g_sHudACompare[266];
+char g_sHudBCompare[266];
 
 int g_iNumberA;
 int g_iNumberB;
@@ -86,7 +85,6 @@ int g_iHudColor1[3];
 int g_iHudColor2[3];
 int g_icolor_hudA = 0;
 int g_icolor_hudB = 0;
-int g_ihudAB = 1;
 int g_iItemSettings[MAXPLAYERS + 1];
 
 float g_fHudPosA[MAXPLAYERS+1][2];
@@ -97,8 +95,10 @@ float g_fAvoidSpankingTime;
 bool g_bChatHud;
 bool g_bAutoTranslate;
 bool g_bAvoidSpanking;
-bool b_IsCountable = false;
-bool b_IsTranlate = false;
+bool g_bIsCountable = false;
+bool g_bIsTranlate = false;
+bool g_bHudA = false;
+bool g_bHudB = false;
 
 enum struct ChatHud_Enum
 {
@@ -106,7 +106,7 @@ enum struct ChatHud_Enum
 	bool e_bChatMap;
 	bool e_bChatSound;
 	bool e_bHudSound;
-	char e_bHudPosition[MAX_TEXT_LENGTH];
+	char e_bHudPosition[64];
 }
 
 ChatHud_Enum ChatHudClientEnum[MAXPLAYERS+1];
@@ -138,11 +138,13 @@ public void OnPluginStart()
 
 	g_cChatHud = CreateConVar("sm_chat_hud", "1", "Chat Hud Enable = 1/Disable = 0");
 	g_cAvoidSpanking = CreateConVar("sm_chat_hud_avoid_spanking", "1", "Map anti spam system, Enable = 1/Disable = 0");
-	g_cAvoidSpankingTime = CreateConVar("sm_chat_hud_time_spanking", "5", "Map spam detection time");
+	g_cAvoidSpankingTime = CreateConVar("sm_chat_hud_time_spanking", "2.0", "Map spam detection time");
 	g_changecolor = CreateConVar("sm_chat_hud_time_changecolor", "3", "Set the final time for Hud to change colors.");
 	g_cVHudColor1 = CreateConVar("sm_chat_hud_color_1", "0 255 0", "RGB color value for the hud Start.");
 	g_cVHudColor2 = CreateConVar("sm_chat_hud_color_2", "255 0 0", "RGB color value for the hud Finish.");
 	g_cAutoTranslate = CreateConVar("sm_chat_hud_auto_translate", "1", "Chat Hud Auto Translate Enable = 1/Disable = 0");
+	g_cConsoleChat = CreateConVar("sm_chat_hud_console_chat", "{red}[Console] {yellow}► {green}TEXT {yellow}◄", "Chat Text format. Do not remove TEXT.");
+	g_cConsoleHud = CreateConVar("sm_chat_hud_console_hud", "► TEXT ◄", "Hud Center Text format. Do not remove TEXT.");
 
 	g_cChatHud.AddChangeHook(ConVarChange);
 	g_cAvoidSpanking.AddChangeHook(ConVarChange);
@@ -151,8 +153,16 @@ public void OnPluginStart()
 	g_cVHudColor1.AddChangeHook(ConVarChange);
 	g_cVHudColor2.AddChangeHook(ConVarChange);
 	g_cAutoTranslate.AddChangeHook(ConVarChange);
+	g_cConsoleChat.AddChangeHook(ConVarChange);
+	g_cConsoleHud.AddChangeHook(ConVarChange);
 
-	ConVarChange(null, "", "");
+	g_bChatHud = g_cChatHud.BoolValue;
+	g_bAvoidSpanking = g_cAvoidSpanking.BoolValue;
+	g_fAvoidSpankingTime = g_cAvoidSpankingTime.FloatValue;
+	g_fColor_Time = g_changecolor.FloatValue;
+	g_bAutoTranslate = g_cAutoTranslate.BoolValue;
+	ChatHudColorRead();
+	ChatHudFormatRead();
 
 	AutoExecConfig(true, "Chat_hud");
 	
@@ -167,16 +177,6 @@ public void OnPluginStart()
 		}
 	}
 	GetLanguageInfo(GetServerLanguage(), g_sServerLang, sizeof(g_sServerLang));
-}
-
-public void ColorStringToArray(const char[] sColorString, int aColor[3])
-{
-	char asColors[4][4];
-	ExplodeString(sColorString, " ", asColors, sizeof(asColors), sizeof(asColors[]));
-
-	aColor[0] = StringToInt(asColors[0]);
-	aColor[1] = StringToInt(asColors[1]);
-	aColor[2] = StringToInt(asColors[2]);
 }
 
 public void OnMapStart()
@@ -229,7 +229,7 @@ public Action OnClientPutInServerPost(Handle PutTimer, int client)
 public void OnClientCookiesCached(int client)
 {
 	g_iItemSettings[client] = 0;
-	char scookie[MAX_TEXT_LENGTH];
+	char scookie[64];
 
 	GetClientCookie(client, g_hChatHud, scookie, sizeof(scookie));
 	if(!StrEqual(scookie, ""))
@@ -301,7 +301,7 @@ public void ReadFileChatHud()
 
 void CheckSoundsChatHud()
 {
-	char s_Buffer[MAXLENGTH_INPUT];
+	char s_Buffer[256];
 	PrecacheSound("common/talk.wav", false);
 	PrecacheSound("common/stuck1.wav", false);
 	if(KvGotoFirstSubKey(g_hKvChatHud))
@@ -322,57 +322,119 @@ void CheckSoundsChatHud()
 
 public void ConVarChange(ConVar convar, char[] oldValue, char[] newValue)
 {
-	g_bChatHud = g_cChatHud.BoolValue;
-	g_bAvoidSpanking = g_cAvoidSpanking.BoolValue;
-	g_fAvoidSpankingTime = g_cAvoidSpankingTime.FloatValue;
-	g_fColor_Time = g_changecolor.FloatValue;
-	g_bAutoTranslate = g_cAutoTranslate.BoolValue;
-	ChatHudColorRead();
+	if(convar == g_cChatHud) {
+		g_bChatHud = g_cChatHud.BoolValue;
+	} else if(convar == g_cAvoidSpanking) {
+		g_bAvoidSpanking = g_cAvoidSpanking.BoolValue;
+	} else if(convar == g_cAvoidSpankingTime) {
+		g_fAvoidSpankingTime = g_cAvoidSpankingTime.FloatValue;
+	} else if(convar == g_changecolor) {
+		g_fColor_Time = g_changecolor.FloatValue;
+	} else if(convar == g_cAutoTranslate) {
+		g_bAutoTranslate = g_cAutoTranslate.BoolValue;
+	} else if(convar == g_cVHudColor1 || convar == g_cVHudColor2) {
+		ChatHudColorRead();
+	} else if(convar == g_cConsoleChat || convar == g_cConsoleHud) {
+		ChatHudFormatRead();
+	}
 }
 
 public void ChatHudColorRead()
 {
-	char s_ColorValue1[64];
-	char s_ColorValue2[64];
-	g_cVHudColor1.GetString(s_ColorValue1, sizeof(s_ColorValue1));
-	g_cVHudColor2.GetString(s_ColorValue2, sizeof(s_ColorValue2));
+	char s_BufferTemp[64];
 
-	ColorStringToArray(s_ColorValue1, g_iHudColor1);
-	ColorStringToArray(s_ColorValue2, g_iHudColor2);
+	g_cVHudColor1.GetString(s_BufferTemp, sizeof(s_BufferTemp));
+	ColorStringToArray(s_BufferTemp, g_iHudColor1);
+
+	g_cVHudColor2.GetString(s_BufferTemp, sizeof(s_BufferTemp));
+	ColorStringToArray(s_BufferTemp, g_iHudColor2);
+}
+
+public void ChatHudFormatRead()
+{
+	char s_BufferTemp[64];
+
+	g_cConsoleChat.GetString(s_BufferTemp, sizeof(s_BufferTemp));
+	FormatStringToArray(s_BufferTemp, g_sConsoleChat);
+
+	g_cConsoleHud.GetString(s_BufferTemp, sizeof(s_BufferTemp));
+	FormatStringToArray(s_BufferTemp, g_sConsoleHud);
+}
+
+public void ColorStringToArray(const char[] sColorString, int aColor[3])
+{
+	char asColors[4][4];
+	ExplodeString(sColorString, " ", asColors, sizeof(asColors), sizeof(asColors[]));
+
+	aColor[0] = StringToInt(asColors[0]);
+	aColor[1] = StringToInt(asColors[1]);
+	aColor[2] = StringToInt(asColors[2]);
+}
+
+public void FormatStringToArray(const char[] sFormatString, char[][] aFormat)
+{
+	char asFormat[3][64];
+	ExplodeString(sFormatString, "TEXT", asFormat, sizeof(asFormat), sizeof(asFormat[]));
+
+	strcopy(aFormat[0], sizeof(asFormat[]), asFormat[0]);
+	strcopy(aFormat[1], sizeof(asFormat[]), asFormat[1]);
 }
 
 public void Event_RoundStart(Handle event, const char[] name, bool dontBroadcast)
 {
 	DeleteTimer("All");
-	g_ihudAB = 1;
+	g_bHudA = false;
+	g_bHudB = false;
 	g_sLineComapare = "";
+	g_sHudACompare = "";
+	g_sHudBCompare = "";
 }
 
 stock void DeleteTimer(char[] s_TimerHandle = "")
 {
 	bool b_TimerHandleA = false;
 	bool b_TimerHandleB = false;
+	bool b_TimerLComapare = false;
 
 	if (StrEqual(s_TimerHandle, "A")) b_TimerHandleA = true;
 	if (StrEqual(s_TimerHandle, "B")) b_TimerHandleB = true;
-	if (StrEqual(s_TimerHandle, "All")) { b_TimerHandleA = true; b_TimerHandleB = true; }
+	if (StrEqual(s_TimerHandle, "C")) b_TimerLComapare = true;
+	if (StrEqual(s_TimerHandle, "All")) { b_TimerHandleA = true; b_TimerHandleB = true; b_TimerLComapare = true;}
 
-	if(b_TimerHandleA && g_hTimerHandleA != INVALID_HANDLE)
+	if(b_TimerHandleA)
 	{
-		KillTimer(g_hTimerHandleA);
+		if(g_hTimerHandleA != INVALID_HANDLE)
+		{
+			KillTimer(g_hTimerHandleA);
+		}
 		g_hTimerHandleA = INVALID_HANDLE;
-		g_ihudAB = 1;
+		g_icolor_hudB = 0;
+		g_sHudACompare = "";
+		g_bHudA = false;
 	}
-	if(b_TimerHandleB && g_hTimerHandleB != INVALID_HANDLE)
+	if(b_TimerHandleB)
 	{
-		KillTimer(g_hTimerHandleB);
+		if(g_hTimerHandleB != INVALID_HANDLE)
+		{
+			KillTimer(g_hTimerHandleB);
+		}
 		g_hTimerHandleB = INVALID_HANDLE;
-		if(g_hTimerHandleA == INVALID_HANDLE) g_ihudAB = 1;
+		g_icolor_hudB = 0;
+		g_sHudBCompare = "";
+		g_bHudB = false;
+	}
+	if (b_TimerLComapare)
+	{
+		if(g_hLineComapare != INVALID_HANDLE)
+		{
+			KillTimer(g_hLineComapare);
+		}
+		g_hLineComapare = INVALID_HANDLE;
 	}
 }
-/*
+
 char Blacklist[][] = {
-	"recharge", "recast", "cooldown", "cool"
+	"recharge", "recast", "cooldown", "cool", "use"
 };
 
 bool CheckString(char[] string)
@@ -386,10 +448,12 @@ bool CheckString(char[] string)
 	}
 	return false;
 }
-*/
+
 public Action SpanReload(Handle sTime)
 {
 	g_sLineComapare = "";
+	g_hLineComapare = INVALID_HANDLE;
+	return Plugin_Stop;
 }
 
 public Action Command_CHudClient(int client, int arg)
@@ -411,12 +475,12 @@ void MenuClientChud(int client)
 	SetGlobalTransTarget(client);
 	g_iItemSettings[client] = 0;
 
-	char m_sTitle[MENU_LINE_TITLE_LENGTH];
-	char m_sChatHud[MENU_LINE_REG_LENGTH];
-	char m_sChatMap[MENU_LINE_REG_LENGTH];
-	char m_sChatSound[MENU_LINE_REG_LENGTH];
-	char m_sHudSound[MENU_LINE_REG_LENGTH];
-	char m_sHudPosition[MENU_LINE_REG_LENGTH];
+	char m_sTitle[256];
+	char m_sChatHud[64];
+	char m_sChatMap[64];
+	char m_sChatSound[64];
+	char m_sHudSound[64];
+	char m_sHudPosition[64];
 
 	char m_sChatHudTemp[16];
 	char m_sChatMapTemp[16];
@@ -467,7 +531,7 @@ public int MenuClientCHudCallBack(Handle MenuCHud, MenuAction action, int client
 
 	if (action == MenuAction_Select)
 	{
-		char sItem[MAX_TEXT_LENGTH];
+		char sItem[64];
 		GetMenuItem(MenuCHud, itemNum, sItem, sizeof(sItem));
 
 		if (StrEqual(sItem[0], "Time Counter"))
@@ -528,16 +592,8 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 {
 	if(client == 0)
 	{
-		if(g_bAutoTranslate && b_IsTranlate) return Plugin_Continue;
-		if(!g_hKvChatHud)
-		{
-			ReadFileChatHud();
-			return Plugin_Continue;
-		}
-		KvRewind(g_hKvChatHud);
-
-		char s_ConsoleChats[MAXLENGTH_INPUT], s_ConsoleChat[MAXLENGTH_INPUT], s_FilterText[sizeof(s_ConsoleChat)+1], s_ChatArray[32][MAXLENGTH_INPUT];
-		char s_PrintText[MAXLENGTH_INPUT], s_PrintHud[MAXLENGTH_INPUT], s_Soundp[MAXLENGTH_INPUT], s_Soundt[MAXLENGTH_INPUT], Buffer_Temp[MAXLENGTH_INPUT];
+		char s_ConsoleChats[256], s_ConsoleChat[256], s_FilterText[sizeof(s_ConsoleChat)+1], s_ChatArray[32][256];
+		char s_PrintText[256], s_PrintHud[256], s_Soundp[256], s_Soundt[256], Buffer_Temp[256];
 		int i_ConsoleNumber, i_FilterPos;
 		
 
@@ -545,8 +601,29 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		StripQuotes(s_ConsoleChats);
 		strcopy(s_ConsoleChat, sizeof(s_ConsoleChat), RemoveItens(s_ConsoleChats));
 
-		if (g_bAvoidSpanking && StrEqual(g_sLineComapare, s_ConsoleChat)) { CreateTimer(g_fAvoidSpankingTime, SpanReload, TIMER_DATA_HNDL_CLOSE|TIMER_FLAG_NO_MAPCHANGE); return Plugin_Stop;}
+		if (g_bAvoidSpanking && StrEqual(g_sLineComapare, s_ConsoleChat))
+		{
+			return Plugin_Stop;
+		}
+		else if(g_bAutoTranslate && g_bIsTranlate)
+		{
+			return Plugin_Continue;
+		}
+		else if(!g_hKvChatHud)
+		{
+			ReadFileChatHud();
+			return Plugin_Continue;
+		}
+		KvRewind(g_hKvChatHud);
+		
 		Format(g_sLineComapare, sizeof(g_sLineComapare), s_ConsoleChat);
+
+		if (g_hLineComapare != INVALID_HANDLE)
+		{
+			KillTimer(g_hLineComapare);
+			g_hLineComapare = INVALID_HANDLE;
+		}
+		g_hLineComapare = CreateTimer(g_fAvoidSpankingTime, SpanReload, TIMER_FLAG_NO_MAPCHANGE);
 
 		for (int i = 0; i < sizeof(s_ConsoleChat); i++) 
 		{
@@ -563,7 +640,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		{
 			if(StringToInt(s_ChatArray[0]) != 0)
 			{
-				b_IsCountable = true;
+				g_bIsCountable = true;
 				i_ConsoleNumber = StringToInt(s_ChatArray[0]);
 			}
 		}
@@ -575,17 +652,17 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 				if(i + 1 <= i_Words && (StrEqual(s_ChatArray[i + 1], "s", false) || (CharEqual(s_ChatArray[i + 1][0], 's') && CharEqual(s_ChatArray[i + 1][1], 'e'))))
 				{
 					i_ConsoleNumber = StringToInt(s_ChatArray[i]);
-					b_IsCountable = true;
+					g_bIsCountable = true;
 				}
-				if(!b_IsCountable && i + 2 <= i_Words && (StrEqual(s_ChatArray[i + 2], "s", false) || (CharEqual(s_ChatArray[i + 2][0], 's') && CharEqual(s_ChatArray[i + 2][1], 'e'))))
+				if(!g_bIsCountable && i + 2 <= i_Words && (StrEqual(s_ChatArray[i + 2], "s", false) || (CharEqual(s_ChatArray[i + 2][0], 's') && CharEqual(s_ChatArray[i + 2][1], 'e'))))
 				{
 					i_ConsoleNumber = StringToInt(s_ChatArray[i]);
-					b_IsCountable = true;
+					g_bIsCountable = true;
 				}
 			}
-			if(!b_IsCountable)
+			if(!g_bIsCountable)
 			{
-				char c_Word[MAXLENGTH_INPUT];
+				char c_Word[256];
 				strcopy(c_Word, sizeof(c_Word), s_ChatArray[i]);
 				int i_Len = strlen(c_Word);
 
@@ -598,51 +675,42 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 							if(CharEqual(c_Word[3], 's'))
 							{
 								i_ConsoleNumber = StringEnder(c_Word, 5, i_Len);
-								b_IsCountable = true;
+								g_bIsCountable = true;
 							}
 						}
 						else if(CharEqual(c_Word[2], 's'))
 						{
 							i_ConsoleNumber = StringEnder(c_Word, 4, i_Len);
-							b_IsCountable = true;
+							g_bIsCountable = true;
 						}
 					}
 					else if(CharEqual(c_Word[1], 's'))
 					{
 						i_ConsoleNumber = StringEnder(c_Word, 3, i_Len);
-						b_IsCountable = true;
+						g_bIsCountable = true;
 					}
 				}
 			}
-			if(b_IsCountable) break;
+			if(g_bIsCountable) break;
 		}
 		if(!KvJumpToKey(g_hKvChatHud, s_ConsoleChat))
 		{
 			if(g_bAutoTranslate)
 			{
-				b_IsTranlate = true;
+				g_bIsTranlate = true;
 				if(strlen(g_sServerLang) == 0) g_sServerLang = "en";
 				CreateRequest(s_ConsoleChat, g_sServerLang);
-				//if(b_IsCountable && !CheckString(s_ConsoleChat))
-				if(b_IsCountable)
+				if(g_bIsCountable && !CheckString(s_ConsoleChat))
+				//if(g_bIsCountable)
 				{
-					if (g_ihudAB == 1)
-					{
-					g_iNumberA = i_ConsoleNumber;
-					g_iONumberA = i_ConsoleNumber;
-					}
-					else
-					{
-					g_iNumberB = i_ConsoleNumber;
-					g_iONumberB = i_ConsoleNumber;
-					}
-					InitCountDown(s_ConsoleChat);
+					Format(s_PrintHud, sizeof(s_PrintHud), "%s%s%s", g_sConsoleHud[0], s_ConsoleChat, g_sConsoleHud[1]);
+					InitCountDown(s_PrintHud, i_ConsoleNumber);
 				}
 				for(int i = 1 ; i < MaxClients; i++)
 				{
 					if(IsValidClient(i) && ChatHudClientEnum[i].e_bChatMap)
 					{
-						CPrintToChat(i, "{red}[Console] {yellow}► {green}%s {yellow}◄", s_ConsoleChat);
+						CPrintToChat(i, "%s%s%s", g_sConsoleChat[0], s_ConsoleChat, g_sConsoleChat[1]);
 						if(ChatHudClientEnum[i].e_bChatSound) EmitSoundToClient(i, "common/talk.wav", _, SNDCHAN_AUTO);
 					}
 				}
@@ -652,10 +720,8 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 			{
 				KvJumpToKey(g_hKvChatHud, s_ConsoleChat, true);
 				KvSetNum(g_hKvChatHud, "enabled", 1);
-				Format(Buffer_Temp, sizeof(Buffer_Temp), "{red}[Console] {yellow}► {green}%s {yellow}◄", s_ConsoleChat);
-				KvSetString(g_hKvChatHud, "default", Buffer_Temp);
-				Format(Buffer_Temp, sizeof(Buffer_Temp), "► %s ◄", s_ConsoleChat);
-				if(b_IsCountable) KvSetString(g_hKvChatHud, "ChatHud", Buffer_Temp);
+				KvSetString(g_hKvChatHud, "default", s_ConsoleChat);
+				if(g_bIsCountable) KvSetString(g_hKvChatHud, "ChatHud", s_ConsoleChat);
 				KvRewind(g_hKvChatHud);
 				KeyValuesToFile(g_hKvChatHud, g_sPathChatHud);
 				KvJumpToKey(g_hKvChatHud, s_ConsoleChat);
@@ -671,25 +737,16 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 			KvRewind(g_hKvChatHud);
 			return Plugin_Continue;
 		}
-		//if(b_IsCountable && !CheckString(s_ConsoleChat))
-		if(b_IsCountable)
+		if(g_bIsCountable && !CheckString(s_ConsoleChat))
+		//if(g_bIsCountable)
 		{
-			KvGetString(g_hKvChatHud, "ChatHud", s_PrintHud, sizeof(s_PrintHud), "HUDMISSING");
-			if(!StrEqual(s_PrintHud, "HUDMISSING"))
+			KvGetString(g_hKvChatHud, "ChatHud", Buffer_Temp, sizeof(Buffer_Temp), "HUDMISSING");
+			if(!StrEqual(Buffer_Temp, "HUDMISSING"))
 			{
-				if (g_ihudAB == 1)
-				{
-				g_iNumberA = i_ConsoleNumber;
-				g_iONumberA = i_ConsoleNumber;
-				}
-				else
-				{
-				g_iNumberB = i_ConsoleNumber;
-				g_iONumberB = i_ConsoleNumber;
-				}
-				InitCountDown(s_PrintHud);
+				Format(s_PrintHud, sizeof(s_PrintHud), "%s%s%s", g_sConsoleHud[0], Buffer_Temp, g_sConsoleHud[1]);
+				InitCountDown(s_PrintHud, i_ConsoleNumber);
 			}
-			b_IsCountable = false;
+			g_bIsCountable = false;
 		}
 
 		KvGetString(g_hKvChatHud, "sound", s_Soundp, sizeof(s_Soundp), "default");
@@ -703,7 +760,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 			{
 				KvGetString(g_hKvChatHud, g_sClLang[i], s_PrintText, sizeof(s_PrintText), "LANGMISSING");
 				if(StrEqual(s_PrintText, "LANGMISSING")) KvGetString(g_hKvChatHud, "default", s_PrintText, sizeof(s_PrintText), "TEXTMISSING");
-				if(!StrEqual(s_PrintText, "TEXTMISSING")) CPrintToChat(i, s_PrintText);
+				if(!StrEqual(s_PrintText, "TEXTMISSING")) CPrintToChat(i, "%s%s%s", g_sConsoleChat[0], s_PrintText, g_sConsoleChat[1]);
 			}
 		}
 		if(!StrEqual(s_Soundp, "none"))
@@ -723,7 +780,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 				{
 					KvGetString(g_hKvChatHud, g_sClLang[i], s_PrintText, sizeof(s_PrintText), "LANGMISSING");
 					if(StrEqual(s_PrintText, "LANGMISSING")) KvGetString(g_hKvChatHud, "default", s_PrintText, sizeof(s_PrintText), "TEXTMISSING");
-					if(!StrEqual(s_PrintText, "TEXTMISSING")) PrintHintText(i, s_PrintText);
+					if(!StrEqual(s_PrintText, "TEXTMISSING")) PrintHintText(i, "%s%s%s", g_sConsoleHud[0], s_PrintText, g_sConsoleHud[1]);
 				}
 		}
 		KvRewind(g_hKvChatHud);
@@ -735,7 +792,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 		return Plugin_Continue;
 	}
 
-	char Args[MAX_TEXT_LENGTH];
+	char Args[64];
 	Format(Args, sizeof(Args), sArgs);
 	StripQuotes(Args);
 
@@ -766,7 +823,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 void CreateRequest(char[] input, char[] target)
 {
 
-	char s_ConsoleChatsTranslate[MAXLENGTH_INPUT];
+	char s_ConsoleChatsTranslate[256];
 	Handle datapack = CreateDataPack();
 
 	Format(s_ConsoleChatsTranslate, sizeof(s_ConsoleChatsTranslate), "%s", input);
@@ -796,8 +853,8 @@ public int Callback_OnHTTPResponse(Handle request, bool bFailure, bool bRequestS
 	if (!bRequestSuccessful || eStatusCode != k_EHTTPStatusCode200OK)
 	{	  
 		CloseHandle(datapack);
-		b_IsCountable = false;
-		b_IsTranlate = false;		
+		g_bIsCountable = false;
+		g_bIsTranlate = false;		
 		return;
 	}
 
@@ -808,7 +865,7 @@ public int Callback_OnHTTPResponse(Handle request, bool bFailure, bool bRequestS
 	SteamWorks_GetHTTPResponseBodyData(request, result, iBufferSize);
 	delete request;
 	
-	char target[3], input[255], Buffer_Temp[MAXLENGTH_INPUT], s_Text_Temp[MAXLENGTH_INPUT];
+	char target[3], input[255], s_Text_Temp[256];
 	ResetPack(datapack);
 	ReadPackString(datapack, target, 3);
 	ReadPackString(datapack, input, 255);
@@ -838,8 +895,8 @@ public int Callback_OnHTTPResponse(Handle request, bool bFailure, bool bRequestS
 	else
 	{
 		delete arrayA;
-		b_IsCountable = false;
-		b_IsTranlate = false;
+		g_bIsCountable = false;
+		g_bIsTranlate = false;
 		return;
 	}
 	
@@ -851,18 +908,15 @@ public int Callback_OnHTTPResponse(Handle request, bool bFailure, bool bRequestS
 		KvRewind(g_hKvChatHud);
 		KvJumpToKey(g_hKvChatHud, input, true);
 		KvSetNum(g_hKvChatHud, "enabled", 1);
-		Format(Buffer_Temp, sizeof(Buffer_Temp), "{red}[Console] {yellow}► {green}%s {yellow}◄", input);
-		KvSetString(g_hKvChatHud, "default", Buffer_Temp);
-		Format(Buffer_Temp, sizeof(Buffer_Temp), "{red}[Console] {yellow}► {green}%s {yellow}◄", s_Text_Temp);
-		KvSetString(g_hKvChatHud, target, Buffer_Temp);
-		Format(Buffer_Temp, sizeof(Buffer_Temp), "► %s ◄", s_Text_Temp);
-		if(b_IsCountable) KvSetString(g_hKvChatHud, "ChatHud", Buffer_Temp);
+		KvSetString(g_hKvChatHud, "default", input);
+		KvSetString(g_hKvChatHud, target, s_Text_Temp);
+		if(g_bIsCountable) KvSetString(g_hKvChatHud, "ChatHud", s_Text_Temp);
 		KvRewind(g_hKvChatHud);
 		KeyValuesToFile(g_hKvChatHud, g_sPathChatHud);
 		KvRewind(g_hKvChatHud);
 	}
-	b_IsCountable = false;
-	b_IsTranlate = false;
+	g_bIsCountable = false;
+	g_bIsTranlate = false;
 }
 
 public bool CharEqual(int a, int b)
@@ -887,10 +941,26 @@ public int StringEnder(char[] a, int b, int c)
 	return StringToInt(a);
 }
 
-public void InitCountDown(char[] text)
+public void InitCountDown(char[] sText, int i_Number)
 {
-	if (g_ihudAB == 1)
+	if (!g_bHudA)
 	{
+		char sANumber[8];
+		IntToString(i_Number, sANumber, sizeof(sANumber));
+		strcopy(g_sHudACompare, sizeof(g_sHudACompare), sText);
+		ReplaceString(g_sHudACompare, sizeof(g_sHudACompare), sANumber, "");
+
+		if(g_bAvoidSpanking && strlen(g_sHudACompare) != 0 && StrEqual(g_sHudACompare, g_sHudBCompare, false))
+		{
+			g_sHudACompare = "";
+			return;
+		}
+		g_bHudA = true;
+		g_bHudB = false;
+		
+		g_iNumberA = i_Number;
+		g_iONumberA = i_Number;
+
 		if(g_hTimerHandleA != INVALID_HANDLE)
 		{
 			KillTimer(g_hTimerHandleA);
@@ -899,19 +969,33 @@ public void InitCountDown(char[] text)
 
 		DataPack TimerPackA;
 		g_hTimerHandleA = CreateDataTimer(1.0, RepeatMSGA, TimerPackA, TIMER_REPEAT);
-		TimerPackA.WriteString(text);
-		g_ihudAB = 2;
+		TimerPackA.WriteString(sText);
 
 		for (int i = 1; i <= MAXPLAYERS + 1; i++)
 		{
 			if(IsValidClient(i))
 			{
-				SendHudMsgA(i, text);
+				SendHudMsgA(i, sText);
 			}
 		}
 	}
-	else 
+	else if (!g_bHudB)
 	{
+		char sBNumber[8];
+		IntToString(i_Number, sBNumber, sizeof(sBNumber));
+		strcopy(g_sHudBCompare, sizeof(g_sHudBCompare), sText);
+		ReplaceString(g_sHudBCompare, sizeof(g_sHudBCompare), sBNumber, "");
+
+		if(g_bAvoidSpanking && strlen(g_sHudBCompare) != 0 && StrEqual(g_sHudBCompare, g_sHudACompare, false))
+		{
+			g_sHudBCompare = "";
+			return;
+		}
+		g_bHudA = false;
+		g_bHudB = true;
+		g_iNumberB = i_Number;
+		g_iONumberB = i_Number;
+
 		if(g_hTimerHandleB != INVALID_HANDLE)
 		{
 			KillTimer(g_hTimerHandleB);
@@ -920,14 +1004,13 @@ public void InitCountDown(char[] text)
 
 		DataPack TimerPackB;
 		g_hTimerHandleB = CreateDataTimer(1.0, RepeatMSGB, TimerPackB, TIMER_REPEAT);
-		TimerPackB.WriteString(text);
-		g_ihudAB = 1;
+		TimerPackB.WriteString(sText);
 
 		for (int i = 1; i <= MAXPLAYERS + 1; i++)
 		{
 			if(IsValidClient(i))
 			{
-				SendHudMsgB(i, text);
+				SendHudMsgB(i, sText);
 			}
 		}
 	}
@@ -951,10 +1034,11 @@ public Action RepeatMSGA(Handle timer, Handle h_PackA)
 				}
 			}
 		}
+		g_sHudACompare = "";
 		return Plugin_Handled;
 	}
-	
-	char string[MAXLENGTH_INPUT + 10], sNumber[8], sONumber[8];
+
+	char string[266], sNumber[8], sONumber[8];
 	ResetPack(h_PackA);
 	ReadPackString(h_PackA, string, sizeof(string));
 
@@ -991,10 +1075,11 @@ public Action RepeatMSGB(Handle timer, Handle h_PackB)
 				}
 			}
 		}
+		g_sHudBCompare = "";
 		return Plugin_Handled;
 	}
-	
-	char string[MAXLENGTH_INPUT + 10], sNumber[8], sONumber[8];
+
+	char string[266], sNumber[8], sONumber[8];
 	ResetPack(h_PackB);
 	ReadPackString(h_PackB, string, sizeof(string));
 
@@ -1024,7 +1109,6 @@ public void SendHudMsgA(int client, char[] szMessage)
 	}
 
 	g_icolor_hudA++;
-	if(g_iNumberA <= 0) g_icolor_hudA = 0;
 }
 
 public void SendHudMsgB(int client, char[] szMessage)
@@ -1037,7 +1121,6 @@ public void SendHudMsgB(int client, char[] szMessage)
 		ShowSyncHudText(client, g_hHudSyncB, szMessage);
 	}
 	g_icolor_hudB++;
-	if(g_iNumberB <= 0) g_icolor_hudB = 0;
 }
 
 stock bool IsValidClient(int client, bool bzrAllowBots = false, bool bzrAllowDead = true)
@@ -1047,9 +1130,9 @@ stock bool IsValidClient(int client, bool bzrAllowBots = false, bool bzrAllowDea
 	return true;
 }
 
-stock char RemoveItens(const char[] s_Format, any...) 
+stock char RemoveItens(const char[] s_Format, any...)
 {
-	char s_Text[MAXLENGTH_INPUT];
+	char s_Text[256];
 	//VFormat(s_Text, sizeof(s_Text), s_Format, 2);
 	strcopy(s_Text, sizeof(s_Text), s_Format);
 	/* Removes itens */

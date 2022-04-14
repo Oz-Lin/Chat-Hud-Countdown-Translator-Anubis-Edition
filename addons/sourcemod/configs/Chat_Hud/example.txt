@@ -3,7 +3,7 @@
 	"The map message to replace"
 	{
 		"enabled"		"1"
-		"default" "Console:{red} The map message if the language of client not appear here"
+		"default" "The map message if the language of client not appear here"
 		"chi" "控制台: {red}The map message for chinese clients"
 		"es" "Consola: The map message for spanish clients"
 		"ChatHud"		"The map message to replace" // No Collor, No translate
@@ -11,7 +11,7 @@
 	"The map message 2 to replace"
 	{
 		"enabled"		"1"
-		"default" "Console:{red} The map message 2 if the language of client not appear here"
+		"default" "The map message 2 if the language of client not appear here"
 		"chi" "控制台: {red}The map message 2 for chinese clients"
 		"es" "Consola: The map message 2 for spanish clients"
 	}
@@ -20,7 +20,7 @@
 		"enabled"		"1"
 		"sound" "yoursounddirectory/yoursound.mp3" // emit this sound when this message appear
 
-		"default" "Console:{red} The map message 3 if the language of client not appear here"
+		"default" "The map message 3 if the language of client not appear here"
 		"ChatHud"		"The map message 3 to replace time" // No Collor, No translate
 	}
 	"Map by a spammer"
@@ -31,7 +31,7 @@
 	{
 
 		"enabled"		"1"
-		"default" "Console:{red} door opened! humans go back!"
+		"default" "door opened! humans go back!"
 		"es" "Puerta abierta! Humanos retroceded!"
 		"ChatHud"		"door opened! humans go back!" // No Collor, No translate
 
