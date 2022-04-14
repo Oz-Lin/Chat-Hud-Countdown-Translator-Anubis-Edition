@@ -4,7 +4,7 @@
 * Sorry for my English.
 
 * Author Anubis.
-* Version = 2.2
+* Version = 2.4
 
 ### Countdown HUD on the screen, with 2 Lines!
 With the possibility of altering and translating the messages of the Map.
@@ -17,6 +17,8 @@ automatically generated !!
 * Alert sound when resetting the scanner.
 * Client preferences.
 * Still in testing , but it uses the google API to generate the translations of the map in the server language .
+* Created cvar with central color system - Requires deleting colors from translation files for anyone to update or delete the file.
+* Improved repeated message detection system.
 
 ### Requires
 
@@ -32,6 +34,8 @@ automatically generated !!
 * sm_chat_hud_color_1 - RGB color value for the hud Start.
 * sm_chat_hud_color_2 - RGB color value for the hud Finish.
 * sm_chat_hud_auto_translate - Chat Hud Auto Translate Enable = 1/Disable = 0
+* sm_chat_hud_console_chat - Chat Text format. Do not remove TEXT.
+* sm_chat_hud_console_hud - Hud Center Text format. Do not remove TEXT.
 
 ### Commands
 
@@ -42,5 +46,4 @@ automatically generated !!
 * AntiTeal - countdownhud
 * Franc1sco franug - franug_consolechatmanager
 
-![alt text](https://i.ibb.co/dtMpCX5/1.jpg)
-![alt text](https://i.ibb.co/DpZb5hM/2.jpg)
+![alt text](https://raw.githubusercontent.com/Stewart-Anubis/Chat-Hud-Countdown-Translator-Anubis-Edition/main/img/img1.jpg)
