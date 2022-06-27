@@ -60,6 +60,7 @@ Handle g_hTimerHandleB = INVALID_HANDLE;
 Handle g_hHudSyncA = INVALID_HANDLE;
 Handle g_hHudSyncB = INVALID_HANDLE;
 KeyValues g_hKvChatHud;
+StringMap g_smLanguageIndex;
 
 Handle g_hChatHud = INVALID_HANDLE;
 Handle g_hChatMap = INVALID_HANDLE;
@@ -86,6 +87,7 @@ int g_iHudColor2[3];
 int g_icolor_hudA = 0;
 int g_icolor_hudB = 0;
 int g_iItemSettings[MAXPLAYERS + 1];
+int g_iClientLanguage[MAXPLAYERS+1];
 
 float g_fHudPosA[MAXPLAYERS+1][2];
 float g_fHudPosB[MAXPLAYERS+1][2];
@@ -163,6 +165,7 @@ public void OnPluginStart()
 	g_bAutoTranslate = g_cAutoTranslate.BoolValue;
 	ChatHudColorRead();
 	ChatHudFormatRead();
+	ReadConfig();
 
 	AutoExecConfig(true, "Chat_hud");
 	
@@ -172,11 +175,35 @@ public void OnPluginStart()
 	{
 		if(IsValidClient(i))
 		{
-			OnClientPutInServer(i);
+			//OnClientPutInServer(i);
+			OnClientPostAdminCheck(i);
 			OnClientCookiesCached(i);
 		}
 	}
 	GetLanguageInfo(GetServerLanguage(), g_sServerLang, sizeof(g_sServerLang));
+}
+/*
+public void OnConfigsExecuted()
+{
+	ReadConfig();
+}
+*/
+public void ReadConfig()
+{
+	if(g_smLanguageIndex != null) delete g_smLanguageIndex;
+	g_smLanguageIndex = new StringMap();
+
+	int langCount = GetLanguageCount();
+	int langCounter = 0;
+	
+	for (int i = 0; i < langCount; i++)
+	{
+		char code[4];
+		char language[32];
+		GetLanguageInfo(i, code, sizeof(code), language, sizeof(language));
+		g_smLanguageIndex.SetValue(language, langCounter);
+		langCounter++;
+	}
 }
 
 public void OnMapStart()
@@ -213,6 +240,30 @@ public void PrefMenu(int client, CookieMenuAction actions, any info, char[] buff
 	}
 }
 
+public void OnClientPostAdminCheck(int client)
+{
+	QueryClientConVar(client, "cl_language", ConVarCallBack);
+}
+
+public void ConVarCallBack(QueryCookie cookie, int client, ConVarQueryResult result, const char[] cvarName, const char[] cvarValue)
+{
+	if(IsValidClient(client))
+	{
+		if(!g_smLanguageIndex.GetValue(cvarValue, g_iClientLanguage[client]))
+		{
+			g_iClientLanguage[client] = 0;
+		}
+
+		GetLanguageInfo(g_iClientLanguage[client], g_sClLang[client], sizeof(g_sClLang[]));
+	}
+}
+
+public void OnClientDisconnect(int client)
+{
+	g_iClientLanguage[client] = 0;
+}
+
+/*
 public void OnClientPutInServer(int client)
 {
 	CreateTimer(1.0, OnClientPutInServerPost, client);
@@ -225,7 +276,7 @@ public Action OnClientPutInServerPost(Handle PutTimer, int client)
 		GetLanguageInfo(GetClientLanguage(client), g_sClLang[client], sizeof(g_sClLang[]));
 	}
 }
-
+*/
 public void OnClientCookiesCached(int client)
 {
 	g_iItemSettings[client] = 0;
@@ -1136,7 +1187,7 @@ stock char RemoveItens(const char[] s_Format, any...)
 	//VFormat(s_Text, sizeof(s_Text), s_Format, 2);
 	strcopy(s_Text, sizeof(s_Text), s_Format);
 	/* Removes itens */
-	char s_RemoveItens[][] = {"%", "$", "#", ">", "<", "*", "-", "_", "=", "+", "-", "|", "@", "/", "="};
+	char s_RemoveItens[][] = {"%", "$", "#", ">", "<", "*", "-", "_", "=", "+", "|", "@", "/"};
 	for(int i_Itens = 0; i_Itens < sizeof(s_RemoveItens); i_Itens++ ) {
 		ReplaceString(s_Text, sizeof(s_Text), s_RemoveItens[i_Itens], "", false);
 	}

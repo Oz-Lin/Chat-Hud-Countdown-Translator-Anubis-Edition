@@ -19,6 +19,7 @@ automatically generated !!
 * Still in testing , but it uses the google API to generate the translations of the map in the server language .
 * Created cvar with central color system - Requires deleting colors from translation files for anyone to update or delete the file.
 * Improved repeated message detection system.
+* Translation fix.
 
 ### Requires
 
