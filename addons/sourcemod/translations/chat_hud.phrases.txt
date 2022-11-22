@@ -1,9 +1,9 @@
-"Phrases"
+﻿"Phrases"
 {
 	"Chat Hud Title"
 	{
 		"#format"		"{1:s},{2:s},{3:s},{4:s},{5:s}"
-		"en"		"Chat Hud Anubis\n \nOn-Screen Time Counter: [{1}]\nChat Map Messages: [{2}]\nMessage Click Sound: [{3}]\nAlert Sound When Time Zero: [{4}]\nCounter Position: [{5}]\n ]"
+		"en"		"Chat Hud Anubis\n \nOn-Screen Time Counter: [{1}]\nChat Map Messages: [{2}]\nMessage Click Sound: [{3}]\nAlert Sound When Time Zero: [{4}]\nCounter Position: [{5}]\n "
 		"pt"		"Chat Hud Anubis\n \nContador de Tempo na Tela: [{1}]\nMenssagens de Chat do Mapa: [{2}]\nSom de click das Menssagens: [{3}]\nSom de Alerta Quando Tempo Zerar: [{4}]\nPosição do Contador: [{5}]\n "
 	}
 	"Time Counter"
@@ -38,7 +38,12 @@
 	}
 	"Desable"
 	{
-		"en"		"Desable"
+		"en"		"Disable"
+		"pt"		"Desabilitar"
+	}
+	"Disable"
+	{
+		"en"		"Disable"
 		"pt"		"Desabilitar"
 	}
 	"Enabled"
@@ -48,7 +53,12 @@
 	}
 	"Desabled"
 	{
-		"en"		"Desabled"
+		"en"		"Disabled"
+		"pt"		"Desativado"
+	}
+	"Disabled"
+	{
+		"en"		"Disabled"
 		"pt"		"Desativado"
 	}
 	"Change Hud Position"

@@ -28,10 +28,10 @@
  * exceptions, found in LICENSE.txt (as of this writing, version JULY-31-2007),
  * or <http://www.sourcemod.net/license.php>.
  */
-#define PLUGIN_NAME           "Chat_Hud"
-#define PLUGIN_AUTHOR         "Anubis"
+#define PLUGIN_NAME           "Chat_Hud OZIG Edition"
+#define PLUGIN_AUTHOR         "Anubis + Oz_Lin"
 #define PLUGIN_DESCRIPTION    "Countdown timers based on messages from maps. And translations of map messages."
-#define PLUGIN_VERSION        "2.4"
+#define PLUGIN_VERSION        "2.4a"
 #define PLUGIN_URL            "https://github.com/Stewart-Anubis"
 
 #pragma semicolon 1
@@ -45,6 +45,13 @@
 
 #pragma newdecls required
 
+#define MAXLENGTH_INPUT 			256
+#define MAX_TEXT_LENGTH 			64
+
+#define MENU_LINE_REG_LENGTH 		64
+#define MENU_LINE_BIG_LENGTH 		128
+#define MENU_LINE_TITLE_LENGTH 	256
+#define HUGE_LINE_LENGTH 			512
 ConVar g_cChatHud = null;
 ConVar g_cAvoidSpanking = null;
 ConVar g_cAvoidSpankingTime = null;
@@ -59,6 +66,7 @@ Handle g_hTimerHandleA = INVALID_HANDLE;
 Handle g_hTimerHandleB = INVALID_HANDLE;
 Handle g_hHudSyncA = INVALID_HANDLE;
 Handle g_hHudSyncB = INVALID_HANDLE;
+Handle g_hKvChatHudAdmin = INVALID_HANDLE;
 KeyValues g_hKvChatHud;
 StringMap g_smLanguageIndex;
 
@@ -137,6 +145,7 @@ public void OnPluginStart()
 	g_hHudPosition = RegClientCookie("Chat_Hud_Position", "Chat Hud Position", CookieAccess_Protected);
 
 	RegConsoleCmd("sm_chud", Command_CHudClient, "Chat Hud Client Menu");
+	RegAdminCmd("sm_chudadmin", Command_CHudAdmin, ADMFLAG_GENERIC, "Chat Hud Admin Menu");
 
 	g_cChatHud = CreateConVar("sm_chat_hud", "1", "Chat Hud Enable = 1/Disable = 0");
 	g_cAvoidSpanking = CreateConVar("sm_chat_hud_avoid_spanking", "1", "Map anti spam system, Enable = 1/Disable = 0");
@@ -336,17 +345,21 @@ void ChatHudStringPos(int client)
 public void ReadFileChatHud()
 {
 	if(g_hKvChatHud) delete g_hKvChatHud;
+	delete g_hKvChatHudAdmin;
 	
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 	BuildPath(Path_SM, g_sPathChatHud, sizeof(g_sPathChatHud), "configs/Chat_Hud/%s.txt", mapname);
 	
 	g_hKvChatHud = new KeyValues("Chat_Hud");
+	g_hKvChatHudAdmin = CreateKeyValues("Chat_Hud");
 	
 	if(!FileExists(g_sPathChatHud)) KeyValuesToFile(g_hKvChatHud, g_sPathChatHud);
 	else FileToKeyValues(g_hKvChatHud, g_sPathChatHud);
 
 	KvRewind(g_hKvChatHud);
+	KvCopySubkeys(g_hKvChatHud, g_hKvChatHudAdmin);
+	KvRewind(g_hKvChatHudAdmin);
 	CheckSoundsChatHud();
 }
 
@@ -516,6 +529,17 @@ public Action Command_CHudClient(int client, int arg)
 	return Plugin_Handled;
 }
 
+public Action Command_CHudAdmin(int client, int argc)
+{
+	if(IsValidClient(client) && IsValidGenericAdmin(client))
+	{
+		MenuAdminChud(client);
+	}
+	else
+	PrintToChat(client, "%t", "No Access");
+	return Plugin_Handled;
+}
+
 void MenuClientChud(int client)
 {
 	if (!IsValidClient(client))
@@ -625,6 +649,156 @@ public int MenuClientCHudCallBack(Handle MenuCHud, MenuAction action, int client
 	return 0;
 }
 
+void MenuAdminChud(int client, bool MenuAdmin2 = false, char[] ItemMenu = "")
+{
+	if(g_hKvChatHudAdmin == INVALID_HANDLE || g_hKvChatHud == INVALID_HANDLE)
+	{
+		ReadFileChatHud();
+	}
+
+	g_iItemSettings[client] = 0;
+
+	if (!IsValidClient(client))
+	{
+		return;
+	}
+
+	SetGlobalTransTarget(client);
+
+	char sBuffer_temp[MAXLENGTH_INPUT];
+	char sBuffer_temp2[MAXLENGTH_INPUT];
+	char m_sTitle[MENU_LINE_TITLE_LENGTH];
+
+	Menu MenuChudAdmin = new Menu(MenuAdminChudCallBack);
+
+	if(MenuAdmin2 && strlen(ItemMenu) != 0)
+	{
+		if(!KvJumpToKey(g_hKvChatHudAdmin, ItemMenu))
+		{
+			CPrintToChat(client, "%t", "Invalid Messages", ItemMenu);
+			return;
+		}
+
+		char c_sTemp[MAXLENGTH_INPUT];
+		char c_sMenu2_ChatHud[MAXLENGTH_INPUT];
+
+		KvGetString(g_hKvChatHudAdmin, "default", c_sTemp, sizeof(c_sTemp), "");
+
+		if (KvGetNum(g_hKvChatHudAdmin, "enabled") <= 0)
+		{
+			Format(m_sTitle, sizeof(m_sTitle), "%t", "Chat Hud Title Admin Disabled", RemoveColors(c_sTemp));
+			MenuChudAdmin.SetTitle(m_sTitle);
+			Format(c_sMenu2_ChatHud, sizeof(c_sMenu2_ChatHud), "%t", "Enable");
+			MenuChudAdmin.AddItem("ChatHud_Menu2_Enable", c_sMenu2_ChatHud);
+		}
+		else
+		{
+			Format(m_sTitle, sizeof(m_sTitle), "%t", "Chat Hud Title Admin Enabled", RemoveColors(c_sTemp));
+			MenuChudAdmin.SetTitle(m_sTitle);
+			Format(c_sMenu2_ChatHud, sizeof(c_sMenu2_ChatHud), "%t", "Desable");
+			MenuChudAdmin.AddItem("ChatHud_Menu2_Disable", c_sMenu2_ChatHud);
+		}
+		MenuChudAdmin.ExitBackButton = true;
+		MenuChudAdmin.AddItem("", "", ITEMDRAW_NOTEXT);
+		MenuChudAdmin.AddItem("", "", ITEMDRAW_NOTEXT);
+		MenuChudAdmin.AddItem("", "", ITEMDRAW_NOTEXT);
+		MenuChudAdmin.AddItem("", "", ITEMDRAW_NOTEXT);
+		MenuChudAdmin.AddItem("", "", ITEMDRAW_NOTEXT);
+	}
+	else
+	{
+		Format(m_sTitle, sizeof(m_sTitle), "%t", "Chat Hud Admin Title");
+		MenuChudAdmin.SetTitle(m_sTitle);
+		MenuChudAdmin.ExitBackButton = true;
+
+		if (KvGotoFirstSubKey(g_hKvChatHudAdmin))
+		{
+			do
+			{
+				KvGetString(g_hKvChatHudAdmin, "default", sBuffer_temp, sizeof(sBuffer_temp), "");
+				if (KvGetNum(g_hKvChatHudAdmin, "enabled") <= 0)
+				{
+					Format(sBuffer_temp, sizeof(sBuffer_temp), "[%t] %s", "Desabled", sBuffer_temp);
+				}
+				else
+				{
+					Format(sBuffer_temp, sizeof(sBuffer_temp), "[%t] %s", "Enabled", sBuffer_temp);
+				}
+				KvGetSectionName(g_hKvChatHudAdmin, sBuffer_temp2, sizeof(sBuffer_temp2)); 
+				MenuChudAdmin.AddItem(sBuffer_temp2, RemoveColors(sBuffer_temp));
+			} while (KvGotoNextKey(g_hKvChatHudAdmin));
+			KvRewind(g_hKvChatHudAdmin);
+		}
+		else
+		{
+			if (IsValidClient(client))
+			{
+				CPrintToChat(client, "%t", "No Messages found");
+			}
+			KvRewind(g_hKvChatHudAdmin);
+			delete MenuChudAdmin;
+			return;
+		}
+	}
+	MenuChudAdmin.Display(client, MENU_TIME_FOREVER);
+}
+
+public int MenuAdminChudCallBack(Handle MenuChudAdmin, MenuAction action, int client, int itemNum)
+{
+	if (action == MenuAction_End)
+	{
+		delete MenuChudAdmin;
+	}
+
+	if (action == MenuAction_Select)
+    {
+		char sItem[MAX_TEXT_LENGTH];
+		GetMenuItem(MenuChudAdmin, itemNum, sItem, sizeof(sItem));
+
+		if (StrEqual(sItem[0], "ChatHud_Menu2_Disable"))
+		{
+			char sBuffer[MAX_TEXT_LENGTH];
+			KvSetNum(g_hKvChatHudAdmin, "enabled", 0);
+			KvGetSectionName(g_hKvChatHudAdmin, sBuffer, sizeof(sBuffer));
+			KvRewind(g_hKvChatHudAdmin);
+			KvRewind(g_hKvChatHud);
+			KvRewind(g_hKvChatHudAdmin);
+			KvCopySubkeys(g_hKvChatHudAdmin, g_hKvChatHud);
+			KeyValuesToFile(g_hKvChatHudAdmin, g_sPathChatHud);
+
+			MenuAdminChud(client, true, sBuffer);
+		}
+		else if (StrEqual(sItem[0], "ChatHud_Menu2_Enable"))
+		{
+			char sBuffer[MAX_TEXT_LENGTH];
+			KvSetNum(g_hKvChatHudAdmin, "enabled", 1);
+			KvGetSectionName(g_hKvChatHudAdmin, sBuffer, sizeof(sBuffer));
+			KvRewind(g_hKvChatHudAdmin);
+			KvRewind(g_hKvChatHud);
+			KvRewind(g_hKvChatHudAdmin);
+			KvCopySubkeys(g_hKvChatHudAdmin, g_hKvChatHud);
+			KeyValuesToFile(g_hKvChatHudAdmin, g_sPathChatHud);
+
+			MenuAdminChud(client, true, sBuffer);
+		}
+		else MenuAdminChud(client, true, sItem);
+ 	}
+
+	if (action == MenuAction_Cancel)
+	{
+		KvRewind(g_hKvChatHudAdmin);
+	}
+
+	if (itemNum == MenuCancel_ExitBack)
+	{
+		KvRewind(g_hKvChatHudAdmin);
+		MenuAdminChud(client);
+	}
+
+	return 0;
+}
+
+
 void ChatHudCookiesSetBool(int client, Handle cookie, bool cookievalue)
 {
 	char strCookievalue[8];
@@ -650,7 +824,7 @@ public Action OnClientSayCommand(int client, const char[] command, const char[] 
 
 		strcopy(s_ConsoleChats, sizeof(s_ConsoleChats), sArgs);
 		StripQuotes(s_ConsoleChats);
-		strcopy(s_ConsoleChat, sizeof(s_ConsoleChat), RemoveItens(s_ConsoleChats));
+		strcopy(s_ConsoleChat, sizeof(s_ConsoleChat), RemoveItems(s_ConsoleChats));
 
 		if (g_bAvoidSpanking && StrEqual(g_sLineComapare, s_ConsoleChat))
 		{
@@ -1181,16 +1355,33 @@ stock bool IsValidClient(int client, bool bzrAllowBots = false, bool bzrAllowDea
 	return true;
 }
 
-stock char RemoveItens(const char[] s_Format, any...)
+public bool IsValidGenericAdmin(int client) 
+{ 
+	return CheckCommandAccess(client, "generic_admin", ADMFLAG_GENERIC, false);
+}
+
+stock char RemoveItems(const char[] s_Format, any...)
 {
 	char s_Text[256];
 	//VFormat(s_Text, sizeof(s_Text), s_Format, 2);
 	strcopy(s_Text, sizeof(s_Text), s_Format);
 	/* Removes itens */
-	char s_RemoveItens[][] = {"%", "$", "#", ">", "<", "*", "-", "_", "=", "+", "|", "@", "/"};
-	for(int i_Itens = 0; i_Itens < sizeof(s_RemoveItens); i_Itens++ ) {
-		ReplaceString(s_Text, sizeof(s_Text), s_RemoveItens[i_Itens], "", false);
+	char s_RemoveItems[][] = {"#", ">", "<", "*"};
+	for(int i_Itens = 0; i_Itens < sizeof(s_RemoveItems); i_Itens++ ) {
+		ReplaceString(s_Text, sizeof(s_Text), s_RemoveItems[i_Itens], "", false);
 	}
 	TrimString(s_Text);
+	return s_Text;
+}
+
+stock char RemoveColors(const char[] s_Format, any...) 
+{
+	char s_Text[MAXLENGTH_INPUT];
+	VFormat(s_Text, sizeof(s_Text), s_Format, 2);
+	/* Removes colors */
+	char s_RemoveColor[][] = {"{yellow}", "{default}", "{darkred}", "{green}", "{lightgreen}", "{red}", "{blue}", "{olive}", "{lime}", "{lightred}", "{purple}", "{grey}", "{orange}", "{bluegrey}", "{lightblue}", "{darkblue}", "{grey2}", "{orchid}", "{lightred2}"};
+	for(int i_Color = 0; i_Color < sizeof(s_RemoveColor); i_Color++ ) {
+		ReplaceString(s_Text, sizeof(s_Text), s_RemoveColor[i_Color], "", false);
+	}
 	return s_Text;
 }
